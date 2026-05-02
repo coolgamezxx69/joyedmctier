@@ -14,6 +14,7 @@ export interface LeaderboardEntry {
   uuid: string;
   username: string;
   mmr: number;
+  points: number;
   wins: number;
   losses: number;
   fights: number;
@@ -32,6 +33,7 @@ export interface OverviewEntry {
   uuid: string;
   username: string;
   totalMMR: number;
+  totalPoints: number;
   rankedModes: number;
   totalWins: number;
   totalLosses: number;

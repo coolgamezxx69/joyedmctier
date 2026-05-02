@@ -124,6 +124,8 @@ components:
           type: string
         mmr:
           type: integer
+        points:
+          type: integer
         wins:
           type: integer
         losses:
@@ -141,6 +143,7 @@ components:
         - uuid
         - username
         - mmr
+        - points
         - wins
         - losses
         - fights
@@ -172,6 +175,8 @@ components:
           type: string
         totalMMR:
           type: integer
+        totalPoints:
+          type: integer
         rankedModes:
           type: integer
         totalWins:
@@ -183,6 +188,7 @@ components:
         - uuid
         - username
         - totalMMR
+        - totalPoints
         - rankedModes
         - totalWins
         - totalLosses

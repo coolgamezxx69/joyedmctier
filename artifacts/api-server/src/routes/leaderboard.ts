@@ -16,6 +16,15 @@ function tierFromMMR(mmr: number): string {
   return "LT1";
 }
 
+function pointsFromTier(tier: string): number {
+  const map: Record<string, number> = {
+    HT1: 60, LT1: 45, HT2: 30, LT2: 20,
+    HT3: 10, LT3: 6,  HT4: 4,  LT4: 3,
+    HT5: 2,  LT5: 1,  Unranked: 0,
+  };
+  return map[tier] ?? 0;
+}
+
 function tierProgress(mmr: number): number {
   const brackets = [0, 500, 900, 1300, 1700, 2100, 2500, 2900, 3300, 3700];
   for (let i = brackets.length - 2; i >= 0; i--) {
@@ -31,31 +40,52 @@ const router = Router();
 
 // GET /api/leaderboard/overview — must come BEFORE /:mode
 router.get("/leaderboard/overview", async (req, res) => {
-  const limit = Math.min(Number(req.query.limit ?? 10), 100);
+  const limit = Math.min(Number(req.query.limit ?? 50), 200);
   try {
     const [rows] = await pool.execute<any[]>(
-      `SELECT p.uuid, p.username,
-              SUM(ps.mmr) AS totalMMR,
-              COUNT(DISTINCT ps.mode) AS rankedModes,
-              SUM(ps.fights) AS totalFights
+      `SELECT p.uuid, p.username, ps.mode, ps.mmr, ps.fights,
+              CASE WHEN h.uuid IS NOT NULL THEN 1 ELSE 0 END AS isHT1
        FROM players p
        JOIN player_stats ps ON p.uuid = ps.uuid
-       WHERE ps.fights >= 10
-       GROUP BY p.uuid, p.username
-       ORDER BY totalMMR DESC
-       LIMIT ?`,
-      [limit]
+       LEFT JOIN ht1_holders h ON h.mode = ps.mode AND h.uuid = ps.uuid
+       WHERE ps.fights >= 10`
     );
 
-    const entries = rows.map((r: any, i: number) => ({
-      rank: i + 1,
-      uuid: r.uuid,
-      username: r.username,
-      totalMMR: Number(r.totalMMR ?? 0),
-      rankedModes: Number(r.rankedModes ?? 0),
-      totalWins: Number(r.totalFights ?? 0),
-      totalLosses: 0,
-    }));
+    const playerMap = new Map<string, {
+      uuid: string; username: string;
+      totalMMR: number; totalPoints: number;
+      rankedModes: number; totalFights: number;
+    }>();
+
+    for (const r of rows as any[]) {
+      if (!playerMap.has(r.uuid)) {
+        playerMap.set(r.uuid, {
+          uuid: r.uuid, username: r.username,
+          totalMMR: 0, totalPoints: 0, rankedModes: 0, totalFights: 0,
+        });
+      }
+      const p = playerMap.get(r.uuid)!;
+      const mmr = Number(r.mmr ?? 1000);
+      const tier = r.isHT1 ? "HT1" : tierFromMMR(mmr);
+      p.totalMMR += mmr;
+      p.totalPoints += pointsFromTier(tier);
+      p.rankedModes += 1;
+      p.totalFights += Number(r.fights ?? 0);
+    }
+
+    const entries = [...playerMap.values()]
+      .sort((a, b) => b.totalPoints - a.totalPoints || b.totalMMR - a.totalMMR)
+      .slice(0, limit)
+      .map((p, i) => ({
+        rank: i + 1,
+        uuid: p.uuid,
+        username: p.username,
+        totalMMR: p.totalMMR,
+        totalPoints: p.totalPoints,
+        rankedModes: p.rankedModes,
+        totalWins: p.totalFights,
+        totalLosses: 0,
+      }));
 
     res.json({ entries });
   } catch (err) {
@@ -94,15 +124,17 @@ router.get("/leaderboard/:mode", async (req, res) => {
       const fights = Number(r.fights ?? 0);
       const mmr = Number(r.mmr ?? 1000);
       const isHT1 = r.uuid === ht1uuid;
+      const tier = isHT1 ? "HT1" : tierFromMMR(mmr);
       return {
         rank: i + 1,
         uuid: r.uuid,
         username: r.username,
         mmr,
+        points: pointsFromTier(tier),
         wins: fights,
         losses: 0,
         fights,
-        tier: isHT1 ? "HT1" : tierFromMMR(mmr),
+        tier,
         isHT1,
         progress: isHT1 ? 100 : tierProgress(mmr),
       };

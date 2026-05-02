@@ -13,17 +13,25 @@ export const TIER_COLORS: Record<string, string> = {
 };
 
 export const TIER_GLOW: Record<string, string> = {
-  HT1: "shadow-[0_0_12px_rgba(251,191,36,0.3)]",
-  LT1: "shadow-[0_0_8px_rgba(234,179,8,0.2)]",
-  HT2: "shadow-[0_0_8px_rgba(168,85,247,0.2)]",
-  LT2: "shadow-[0_0_8px_rgba(99,102,241,0.2)]",
-  HT3: "shadow-[0_0_8px_rgba(59,130,246,0.2)]",
-  LT3: "shadow-[0_0_8px_rgba(6,182,212,0.2)]",
-  HT4: "shadow-[0_0_8px_rgba(16,185,129,0.2)]",
-  LT4: "",
-  HT5: "",
-  LT5: "",
-  Unranked: "",
+  HT1: "shadow-[0_0_20px_rgba(251,191,36,0.25)]",
+  LT1: "shadow-[0_0_12px_rgba(234,179,8,0.18)]",
+  HT2: "shadow-[0_0_12px_rgba(168,85,247,0.18)]",
+  LT2: "shadow-[0_0_10px_rgba(99,102,241,0.15)]",
+  HT3: "shadow-[0_0_10px_rgba(59,130,246,0.15)]",
+  LT3: "shadow-[0_0_8px_rgba(6,182,212,0.12)]",
+  HT4: "", LT4: "", HT5: "", LT5: "", Unranked: "",
+};
+
+export const TIER_BORDER_GLOW: Record<string, string> = {
+  HT1: "border-amber-400/30",
+  LT1: "border-yellow-400/20",
+  HT2: "border-purple-500/20",
+  LT2: "border-indigo-500/15",
+  HT3: "border-blue-500/15",
+  LT3: "border-cyan-500/10",
+  HT4: "border-white/5", LT4: "border-white/5",
+  HT5: "border-white/5", LT5: "border-white/5",
+  Unranked: "border-white/5",
 };
 
 export const MODES = [
@@ -47,4 +55,17 @@ export const EU_COUNTRIES = new Set([
 
 export function crafatarUrl(uuid: string, size = 40): string {
   return `https://crafatar.com/avatars/${uuid}?size=${size}&overlay=true&default=MHF_Steve`;
+}
+
+export function crafatarHeadUrl(uuid: string, size = 48): string {
+  return `https://crafatar.com/renders/head/${uuid}?size=${size}&overlay=true&default=MHF_Steve`;
+}
+
+export function pointsFromTier(tier: string): number {
+  const map: Record<string, number> = {
+    HT1: 60, LT1: 45, HT2: 30, LT2: 20,
+    HT3: 10, LT3: 6,  HT4: 4,  LT4: 3,
+    HT5: 2,  LT5: 1,  Unranked: 0,
+  };
+  return map[tier] ?? 0;
 }

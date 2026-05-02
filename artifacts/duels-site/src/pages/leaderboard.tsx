@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { useGetLeaderboard, getGetLeaderboardQueryKey, useGetOverviewLeaderboard, getGetOverviewLeaderboardQueryKey } from "@workspace/api-client-react";
+import {
+  useGetLeaderboard, getGetLeaderboardQueryKey,
+  useGetOverviewLeaderboard, getGetOverviewLeaderboardQueryKey,
+} from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MODES, TIER_COLORS, TIER_GLOW, EU_COUNTRIES, crafatarUrl, type ModeKey } from "@/lib/tiers";
-import { Trophy, Crown } from "lucide-react";
+import { MODES, TIER_COLORS, TIER_BORDER_GLOW, EU_COUNTRIES, crafatarHeadUrl, crafatarUrl, type ModeKey } from "@/lib/tiers";
+import { Trophy, Crown, Swords, Star } from "lucide-react";
 import logoUrl from "@assets/joyedtier_1777740585038.png";
 
 type TabKey = ModeKey | "overview";
@@ -11,31 +14,49 @@ type TabKey = ModeKey | "overview";
 function TierBadge({ tier }: { tier: string }) {
   const cls = TIER_COLORS[tier] ?? TIER_COLORS["Unranked"];
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold font-mono tracking-wide ${cls}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold font-mono tracking-wide ${cls}`}>
       {tier === "HT1" && <Crown className="w-3 h-3 mr-1 text-amber-300" />}
       {tier}
     </span>
   );
 }
 
-function PlayerAvatar({ uuid, username }: { uuid: string; username: string }) {
-  const [error, setError] = useState(false);
+function PlayerHead({ uuid, username }: { uuid: string; username: string }) {
+  const [errored, setErrored] = useState(false);
   return (
     <img
-      src={error ? `https://crafatar.com/avatars/8667ba71b85a4004af54457a9734eed7?size=40&overlay=true` : crafatarUrl(uuid)}
+      src={errored
+        ? `https://crafatar.com/avatars/8667ba71b85a4004af54457a9734eed7?size=40&overlay=true`
+        : crafatarUrl(uuid, 40)}
       alt={username}
-      className="w-8 h-8 flex-shrink-0"
+      className="w-10 h-10 flex-shrink-0 drop-shadow-lg"
       style={{ imageRendering: "pixelated" }}
-      onError={() => setError(true)}
+      onError={() => setErrored(true)}
     />
   );
 }
 
 function RankBadge({ rank }: { rank: number }) {
-  if (rank === 1) return <span className="text-amber-400 font-bold font-mono text-sm">#1</span>;
-  if (rank === 2) return <span className="text-zinc-300 font-bold font-mono text-sm">#2</span>;
-  if (rank === 3) return <span className="text-orange-400 font-bold font-mono text-sm">#3</span>;
-  return <span className="text-muted-foreground font-mono text-sm">#{rank}</span>;
+  if (rank === 1) return (
+    <span className="rank-1 inline-flex items-center justify-center w-9 h-9 rounded-lg text-sm font-black font-mono">
+      1
+    </span>
+  );
+  if (rank === 2) return (
+    <span className="rank-2 inline-flex items-center justify-center w-9 h-9 rounded-lg text-sm font-black font-mono">
+      2
+    </span>
+  );
+  if (rank === 3) return (
+    <span className="rank-3 inline-flex items-center justify-center w-9 h-9 rounded-lg text-sm font-black font-mono">
+      3
+    </span>
+  );
+  return (
+    <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-sm font-bold font-mono text-muted-foreground">
+      {rank}
+    </span>
+  );
 }
 
 function ModeLeaderboard({ mode }: { mode: ModeKey }) {
@@ -46,7 +67,7 @@ function ModeLeaderboard({ mode }: { mode: ModeKey }) {
   if (isLoading) return <LeaderboardSkeleton />;
   if (isError || !data) return (
     <div className="text-center py-20 text-muted-foreground">
-      <p className="text-sm">Failed to load leaderboard. Check that the Replit IP is whitelisted in PebbleHost.</p>
+      <p className="text-sm">Failed to load leaderboard.</p>
     </div>
   );
 
@@ -58,50 +79,39 @@ function ModeLeaderboard({ mode }: { mode: ModeKey }) {
   );
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-border">
-            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">Rank</th>
-            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Player</th>
-            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">Tier</th>
-            <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">MMR</th>
-            <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">Fights</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((entry) => (
-            <tr
-              key={entry.uuid}
-              className={`border-b border-border/50 transition-colors hover:bg-card/80 ${entry.isHT1 ? "bg-amber-500/5 hover:bg-amber-500/10" : ""} ${TIER_GLOW[entry.tier] ?? ""}`}
-            >
-              <td className="py-3 px-4">
-                <RankBadge rank={entry.rank} />
-              </td>
-              <td className="py-3 px-4">
-                <Link href={`/player/${entry.username}`}>
-                  <div className="flex items-center gap-3 cursor-pointer group">
-                    <PlayerAvatar uuid={entry.uuid} username={entry.username} />
-                    <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                      {entry.username}
-                    </span>
-                    {entry.isHT1 && <Crown className="w-4 h-4 text-amber-400 flex-shrink-0" />}
-                  </div>
-                </Link>
-              </td>
-              <td className="py-3 px-4">
-                <TierBadge tier={entry.tier} />
-              </td>
-              <td className="py-3 px-4 text-right">
-                <span className="font-mono font-semibold text-foreground">{entry.mmr.toLocaleString()}</span>
-              </td>
-              <td className="py-3 px-4 text-right">
-                <span className="font-mono text-muted-foreground">{entry.fights.toLocaleString()}</span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="p-3 space-y-2">
+      {/* Column headers */}
+      <div className="flex items-center gap-3 px-4 pb-1">
+        <div className="w-9" />
+        <div className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Player</div>
+        <div className="w-24 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Points</div>
+        <div className="w-20 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tier</div>
+        <div className="w-20 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fights</div>
+      </div>
+      {entries.map((entry) => (
+        <Link key={entry.uuid} href={`/player/${entry.username}`}>
+          <div className={`glass-card rounded-xl px-4 py-3 flex items-center gap-3 cursor-pointer ${entry.isHT1 ? "row-ht1" : ""} ${TIER_BORDER_GLOW[entry.tier] ?? ""}`}>
+            <RankBadge rank={entry.rank} />
+            <PlayerHead uuid={entry.uuid} username={entry.username} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-foreground truncate">{entry.username}</span>
+                {entry.isHT1 && <Crown className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />}
+              </div>
+            </div>
+            <div className="w-24 text-right">
+              <span className="font-mono font-bold text-sky-400 text-base">{entry.points}</span>
+              <span className="text-muted-foreground text-xs ml-0.5">pts</span>
+            </div>
+            <div className="w-20 text-right">
+              <TierBadge tier={entry.tier} />
+            </div>
+            <div className="w-20 text-right">
+              <span className="font-mono text-sm text-muted-foreground">{entry.fights.toLocaleString()}</span>
+            </div>
+          </div>
+        </Link>
+      ))}
     </div>
   );
 }
@@ -114,7 +124,7 @@ function OverviewLeaderboard() {
   if (isLoading) return <LeaderboardSkeleton />;
   if (isError || !data) return (
     <div className="text-center py-20 text-muted-foreground">
-      <p className="text-sm">Failed to load overview. Check that the Replit IP is whitelisted in PebbleHost.</p>
+      <p className="text-sm">Failed to load overview.</p>
     </div>
   );
 
@@ -126,67 +136,47 @@ function OverviewLeaderboard() {
   );
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-border">
-            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">Rank</th>
-            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Player</th>
-            <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-28">Total MMR</th>
-            <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-20">Modes</th>
-            <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">Fights</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((entry) => (
-            <tr
-              key={entry.uuid}
-              className="border-b border-border/50 transition-colors hover:bg-card/80"
-            >
-              <td className="py-3 px-4">
-                <RankBadge rank={entry.rank} />
-              </td>
-              <td className="py-3 px-4">
-                <Link href={`/player/${entry.username}`}>
-                  <div className="flex items-center gap-3 cursor-pointer group">
-                    <PlayerAvatar uuid={entry.uuid} username={entry.username} />
-                    <div>
-                      <span className="font-semibold text-foreground group-hover:text-primary transition-colors block">
-                        {entry.username}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{entry.rankedModes} modes ranked</span>
-                    </div>
-                  </div>
-                </Link>
-              </td>
-              <td className="py-3 px-4 text-right">
-                <span className="font-mono font-bold text-primary">{entry.totalMMR.toLocaleString()}</span>
-              </td>
-              <td className="py-3 px-4 text-right">
-                <span className="font-mono text-muted-foreground">{entry.rankedModes}</span>
-              </td>
-              <td className="py-3 px-4 text-right">
-                <span className="font-mono text-muted-foreground">{entry.totalWins.toLocaleString()}</span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="p-3 space-y-2">
+      {/* Column headers */}
+      <div className="flex items-center gap-3 px-4 pb-1">
+        <div className="w-9" />
+        <div className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Player</div>
+        <div className="w-24 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Points</div>
+        <div className="w-20 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fights</div>
+      </div>
+      {entries.map((entry) => (
+        <Link key={entry.uuid} href={`/player/${entry.username}`}>
+          <div className="glass-card rounded-xl px-4 py-3 flex items-center gap-3 cursor-pointer">
+            <RankBadge rank={entry.rank} />
+            <PlayerHead uuid={entry.uuid} username={entry.username} />
+            <div className="flex-1 min-w-0">
+              <span className="font-bold text-foreground truncate block">{entry.username}</span>
+              <span className="text-xs text-muted-foreground">{entry.rankedModes} mode{entry.rankedModes !== 1 ? "s" : ""} ranked</span>
+            </div>
+            <div className="w-24 text-right">
+              <span className="font-mono font-bold text-sky-400 text-lg">{entry.totalPoints}</span>
+              <span className="text-muted-foreground text-xs ml-0.5">pts</span>
+            </div>
+            <div className="w-20 text-right">
+              <span className="font-mono text-sm text-muted-foreground">{entry.totalWins.toLocaleString()}</span>
+            </div>
+          </div>
+        </Link>
+      ))}
     </div>
   );
 }
 
 function LeaderboardSkeleton() {
   return (
-    <div className="space-y-2 p-4">
-      {Array.from({ length: 10 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 py-2">
-          <Skeleton className="w-8 h-4" />
-          <Skeleton className="w-8 h-8 rounded-none" />
-          <Skeleton className="w-32 h-4" />
-          <div className="flex-1" />
-          <Skeleton className="w-16 h-5 rounded" />
-          <Skeleton className="w-16 h-4" />
+    <div className="p-3 space-y-2">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="glass-card rounded-xl px-4 py-3 flex items-center gap-3">
+          <Skeleton className="w-9 h-9 rounded-lg" />
+          <Skeleton className="w-10 h-10 rounded" />
+          <Skeleton className="w-32 h-4 flex-1" />
+          <Skeleton className="w-16 h-5 rounded-md" />
+          <Skeleton className="w-12 h-4" />
         </div>
       ))}
     </div>
@@ -200,20 +190,22 @@ export default function LeaderboardPage() {
   useEffect(() => {
     fetch("https://ipapi.co/json/")
       .then((r) => r.json())
-      .then((d) => {
-        setRegion(EU_COUNTRIES.has(d.country_code) ? "EU" : "US");
-      })
+      .then((d) => setRegion(EU_COUNTRIES.has(d.country_code) ? "EU" : "US"))
       .catch(() => setRegion("US"));
   }, []);
 
   const activeMode = MODES.find((m) => m.key === activeTab);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative min-h-screen bg-background">
+      {/* Background orbs */}
+      <div className="bg-orbs" aria-hidden>
+        <div className="bg-orb-3" />
+      </div>
+
       {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          {/* Logo + region */}
+      <header className="glass-header sticky top-0 z-20">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
               src={logoUrl}
@@ -222,24 +214,27 @@ export default function LeaderboardPage() {
               style={{ imageRendering: "pixelated" }}
             />
             {region && (
-              <span className="text-xs font-bold font-mono px-2 py-0.5 rounded bg-primary/15 text-primary border border-primary/25 tracking-widest uppercase">
+              <span className="text-xs font-bold font-mono px-2.5 py-1 rounded-md bg-sky-500/10 text-sky-400 border border-sky-500/20 tracking-widest uppercase">
                 {region}
               </span>
             )}
           </div>
-          <span className="text-xs text-muted-foreground hidden sm:block">Minecraft PvP Leaderboard</span>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Swords className="w-3.5 h-3.5" />
+            <span className="hidden sm:block">Minecraft PvP Leaderboard</span>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="relative z-10 max-w-5xl mx-auto px-4 py-8">
         {/* Mode Tabs */}
-        <div className="flex flex-wrap gap-1 mb-6 bg-card/50 rounded-lg p-1 border border-border">
+        <div className="glass-tabs rounded-2xl p-1.5 flex flex-wrap gap-1 mb-6">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`px-4 py-2 rounded-md text-sm font-semibold transition-all flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-1.5 ${
               activeTab === "overview"
-                ? "bg-primary text-primary-foreground shadow"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                ? "glass-tab-active"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
             }`}
           >
             <Trophy className="w-3.5 h-3.5" />
@@ -249,10 +244,10 @@ export default function LeaderboardPage() {
             <button
               key={m.key}
               onClick={() => setActiveTab(m.key)}
-              className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
                 activeTab === m.key
-                  ? "bg-primary text-primary-foreground shadow"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  ? "glass-tab-active"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
               }`}
             >
               {m.label}
@@ -260,20 +255,29 @@ export default function LeaderboardPage() {
           ))}
         </div>
 
-        {/* Table Card */}
-        <div className="rounded-xl border border-border bg-card overflow-hidden shadow-lg">
-          <div className="px-6 py-4 border-b border-border bg-card/80">
-            <h2 className="text-lg font-bold text-foreground">
-              {activeTab === "overview" ? "Overall Rankings" : `${activeMode?.label ?? activeTab} Rankings`}
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {activeTab === "overview"
-                ? "Top players by combined MMR across all modes"
-                : "Ranked players sorted by MMR — top 50"}
-            </p>
+        {/* Main card */}
+        <div className="glass rounded-2xl overflow-hidden">
+          {/* Card header */}
+          <div className="px-6 py-5 border-b border-white/6 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
+                {activeTab === "overview"
+                  ? <><Trophy className="w-5 h-5 text-sky-400" /> Overall Rankings</>
+                  : <><Star className="w-5 h-5 text-sky-400" /> {activeMode?.label ?? activeTab} Rankings</>
+                }
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {activeTab === "overview"
+                  ? "Players ranked by total ranking points across all modes"
+                  : "Players sorted by ranking points — top 50"}
+              </p>
+            </div>
           </div>
 
-          {activeTab === "overview" ? <OverviewLeaderboard /> : <ModeLeaderboard mode={activeTab as ModeKey} />}
+          {activeTab === "overview"
+            ? <OverviewLeaderboard />
+            : <ModeLeaderboard mode={activeTab as ModeKey} />
+          }
         </div>
       </main>
     </div>
