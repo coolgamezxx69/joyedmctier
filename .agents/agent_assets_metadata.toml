@@ -18,3 +18,9 @@ id = "vD0fdlMhJTGrC7pOkOH8G"
 uri = "file://JoyedTiers-patch.txt"
 type = "text"
 title = "JoyedTiers-patch.sk — drop alongside elo1sk.sk"
+
+[[outputs]]
+id = "lPa7EBq9hc8LniYgotnwk"
+uri = "file://elo1sk-joyedtiers.txt"
+type = "text"
+title = "elo1sk-joyedtiers.sk — fully updated, ready to use"
