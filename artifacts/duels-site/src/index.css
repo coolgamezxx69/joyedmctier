@@ -129,25 +129,11 @@
   html { color-scheme: dark; }
 }
 
-/* ── Subtle dot-grid depth layer ─────────────────────────── */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: radial-gradient(circle, rgba(255,255,255,.028) 1px, transparent 1px);
-  background-size: 28px 28px;
-  pointer-events: none;
-  z-index: 0;
-}
-
 /* ── Hero section ────────────────────────────────────────── */
 .hero-glow-ring {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse 60% 80% at 50% -10%, rgba(56,189,248,.15) 0%, transparent 65%),
-    radial-gradient(ellipse 40% 60% at 30% 50%, rgba(99,102,241,.06) 0%, transparent 65%),
-    radial-gradient(ellipse 40% 60% at 70% 50%, rgba(139,92,246,.06) 0%, transparent 65%);
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(56,189,248,.08) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -158,48 +144,46 @@ body::before {
 
 .hero-logo-halo {
   position: absolute;
-  inset: -50px;
+  inset: -40px;
   border-radius: 50%;
-  background:
-    radial-gradient(ellipse 70% 70% at 50% 50%, rgba(56,189,248,.22) 0%, rgba(99,102,241,.12) 45%, transparent 70%);
-  filter: blur(28px);
-  animation: haloBreath 4s ease-in-out infinite;
+  background: radial-gradient(ellipse, rgba(56,189,248,.2) 0%, rgba(99,102,241,.1) 50%, transparent 72%);
+  filter: blur(30px);
+  animation: haloBreath 5s ease-in-out infinite;
 }
 
 .hero-logo-halo-2 {
   position: absolute;
-  inset: -20px;
+  inset: -10px;
   border-radius: 50%;
-  background:
-    radial-gradient(ellipse 60% 60% at 50% 50%, rgba(255,255,255,.06) 0%, transparent 70%);
-  filter: blur(10px);
-  animation: haloBreath 4s ease-in-out infinite reverse;
+  background: radial-gradient(ellipse, rgba(255,255,255,.08) 0%, transparent 70%);
+  filter: blur(8px);
+  animation: haloBreath 5s ease-in-out infinite reverse;
 }
 
 @keyframes haloBreath {
-  0%, 100% { opacity: .65; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.14); }
+  0%, 100% { opacity: .6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.12); }
 }
 
 .hero-logo {
   display: block;
   height: 120px;
   width: auto;
-  filter: drop-shadow(0 8px 24px rgba(56,189,248,.3)) drop-shadow(0 0 60px rgba(56,189,248,.15));
+  filter: drop-shadow(0 6px 20px rgba(56,189,248,.25)) drop-shadow(0 2px 8px rgba(0,0,0,.5));
   animation: logoFloat 6s ease-in-out infinite;
 }
 
 @keyframes logoFloat {
   0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
+  50% { transform: translateY(-7px); }
 }
 
 @media (min-width: 640px) {
-  .hero-logo { height: 160px; }
+  .hero-logo { height: 156px; }
 }
 
 @media (min-width: 1024px) {
-  .hero-logo { height: 200px; }
+  .hero-logo { height: 192px; }
 }
 
 .hero-title {
@@ -207,15 +191,15 @@ body::before {
   font-weight: 900;
   letter-spacing: -0.04em;
   line-height: 1;
-  background: linear-gradient(135deg, #7dd3fc 0%, #e0f2fe 30%, #ffffff 50%, #ddd6fe 70%, #c4b5fd 100%);
+  background: linear-gradient(160deg, #93c5fd 0%, #e2e8f0 45%, #c4b5fd 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 0 40px rgba(56,189,248,.3));
+  filter: drop-shadow(0 2px 20px rgba(56,189,248,.2));
 }
 
 .hero-subtitle {
-  color: rgba(148,163,184,.8);
+  color: rgba(148,163,184,.75);
   font-size: 0.9rem;
   letter-spacing: 0.02em;
 }
