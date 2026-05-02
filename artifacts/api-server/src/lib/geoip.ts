@@ -67,6 +67,6 @@ export async function processGeoQueue(): Promise<void> {
 export function startGeoWorker(): void {
   // Process immediately on startup, then every 30 seconds
   processGeoQueue();
-  setInterval(processGeoQueue, 30_000);
+  setInterval(processGeoQueue, 5_000);
   logger.info("GeoIP worker started");
 }

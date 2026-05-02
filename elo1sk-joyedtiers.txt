@@ -1,4 +1,4 @@
-options:
+    options:
     prefix: &b&lDuels&b » 
     db-host: na01-sql.pebblehost.com
     db-port: 3306
