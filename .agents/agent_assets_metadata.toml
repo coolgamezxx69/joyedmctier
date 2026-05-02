@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "ZpyaPHgNf1F6oMmV-QsIL"
+uri = "file://JoyedTiers-region-wl.txt"
+type = "text"
+title = "JoyedTiers-region-wl.sk — Wins, Losses & Region Skript"

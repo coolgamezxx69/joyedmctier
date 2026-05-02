@@ -33,7 +33,7 @@ router.get("/player/:username", async (req, res) => {
 
   try {
     const [playerRows] = await pool.execute<any[]>(
-      "SELECT uuid, username FROM players WHERE username = ? LIMIT 1",
+      "SELECT uuid, username, COALESCE(region, 'US') AS region FROM players WHERE username = ? LIMIT 1",
       [username]
     );
 
@@ -46,7 +46,10 @@ router.get("/player/:username", async (req, res) => {
     const uuid = player.uuid;
 
     const [statsRows] = await pool.execute<any[]>(
-      `SELECT ps.mode, ps.mmr, ps.fights
+      `SELECT ps.mode, ps.mmr,
+              COALESCE(ps.wins, 0) AS wins,
+              COALESCE(ps.losses, 0) AS losses,
+              COALESCE(ps.fights, 0) AS fights
        FROM player_stats ps
        WHERE ps.uuid = ?`,
       [uuid]
@@ -60,18 +63,21 @@ router.get("/player/:username", async (req, res) => {
 
     const modes: Record<string, any> = {};
     let totalMMR = 0;
-    let totalFights = 0;
+    let totalWins = 0;
+    let totalLosses = 0;
 
     for (const row of statsRows) {
       const mmr = Number(row.mmr ?? 1000);
+      const wins = Number(row.wins ?? 0);
+      const losses = Number(row.losses ?? 0);
       const fights = Number(row.fights ?? 0);
       const isHT1 = ht1modes.has(row.mode);
       const placed = fights >= 10;
 
       modes[row.mode] = {
         mmr,
-        wins: fights,
-        losses: 0,
+        wins,
+        losses,
         fights,
         tier: isHT1 ? "HT1" : placed ? tierFromMMR(mmr) : "Unranked",
         isHT1,
@@ -81,17 +87,19 @@ router.get("/player/:username", async (req, res) => {
 
       if (placed) {
         totalMMR += mmr;
-        totalFights += fights;
+        totalWins += wins;
+        totalLosses += losses;
       }
     }
 
     res.json({
       uuid,
       username: player.username,
+      region: player.region ?? "US",
       modes,
       totalMMR,
-      totalWins: totalFights,
-      totalLosses: 0,
+      totalWins,
+      totalLosses,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get player profile");

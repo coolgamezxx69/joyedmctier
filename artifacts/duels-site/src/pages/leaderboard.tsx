@@ -5,7 +5,7 @@ import {
   useGetOverviewLeaderboard, getGetOverviewLeaderboardQueryKey,
 } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MODES, TIER_COLORS, TIER_BORDER_GLOW, EU_COUNTRIES, crafatarHeadUrl, crafatarUrl, type ModeKey } from "@/lib/tiers";
+import { MODES, TIER_COLORS, TIER_BORDER_GLOW, EU_COUNTRIES, crafatarUrl, type ModeKey } from "@/lib/tiers";
 import { Trophy, Crown, Swords, Star } from "lucide-react";
 import logoUrl from "@assets/joyedtier_1777740585038.png";
 
@@ -33,6 +33,30 @@ function PlayerHead({ uuid, username }: { uuid: string; username: string }) {
       style={{ imageRendering: "pixelated" }}
       onError={() => setErrored(true)}
     />
+  );
+}
+
+function RegionBadge({ region }: { region?: string | null }) {
+  if (!region) return null;
+  const isEU = region === "EU";
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold font-mono tracking-wider flex-shrink-0 ${
+      isEU
+        ? "bg-blue-500/15 text-blue-400 border border-blue-500/25"
+        : "bg-sky-500/15 text-sky-400 border border-sky-500/25"
+    }`}>
+      {region}
+    </span>
+  );
+}
+
+function WinLoss({ wins, losses }: { wins: number; losses: number }) {
+  return (
+    <div className="flex items-center justify-end gap-1 font-mono text-xs">
+      <span className="text-emerald-400 font-bold">W{wins}</span>
+      <span className="text-muted-foreground">/</span>
+      <span className="text-red-400 font-bold">L{losses}</span>
+    </div>
   );
 }
 
@@ -80,13 +104,14 @@ function ModeLeaderboard({ mode }: { mode: ModeKey }) {
 
   return (
     <div className="p-3 space-y-2">
-      {/* Column headers */}
       <div className="flex items-center gap-3 px-4 pb-1">
         <div className="w-9" />
+        <div className="w-10 flex-shrink-0" />
         <div className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Player</div>
-        <div className="w-24 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Points</div>
+        <div className="w-20 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">MMR</div>
+        <div className="w-24 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">W / L</div>
+        <div className="w-20 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Points</div>
         <div className="w-20 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tier</div>
-        <div className="w-20 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fights</div>
       </div>
       {entries.map((entry) => (
         <Link key={entry.uuid} href={`/player/${entry.username}`}>
@@ -94,20 +119,24 @@ function ModeLeaderboard({ mode }: { mode: ModeKey }) {
             <RankBadge rank={entry.rank} />
             <PlayerHead uuid={entry.uuid} username={entry.username} />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-bold text-foreground truncate">{entry.username}</span>
                 {entry.isHT1 && <Crown className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />}
+                <RegionBadge region={entry.region} />
               </div>
             </div>
+            <div className="w-20 text-right">
+              <span className="font-mono text-sm text-foreground font-semibold">{entry.mmr.toLocaleString()}</span>
+            </div>
             <div className="w-24 text-right">
+              <WinLoss wins={entry.wins} losses={entry.losses} />
+            </div>
+            <div className="w-20 text-right">
               <span className="font-mono font-bold text-sky-400 text-base">{entry.points}</span>
               <span className="text-muted-foreground text-xs ml-0.5">pts</span>
             </div>
             <div className="w-20 text-right">
               <TierBadge tier={entry.tier} />
-            </div>
-            <div className="w-20 text-right">
-              <span className="font-mono text-sm text-muted-foreground">{entry.fights.toLocaleString()}</span>
             </div>
           </div>
         </Link>
@@ -137,12 +166,12 @@ function OverviewLeaderboard() {
 
   return (
     <div className="p-3 space-y-2">
-      {/* Column headers */}
       <div className="flex items-center gap-3 px-4 pb-1">
         <div className="w-9" />
+        <div className="w-10 flex-shrink-0" />
         <div className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Player</div>
+        <div className="w-24 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">W / L</div>
         <div className="w-24 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Points</div>
-        <div className="w-20 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fights</div>
       </div>
       {entries.map((entry) => (
         <Link key={entry.uuid} href={`/player/${entry.username}`}>
@@ -150,15 +179,18 @@ function OverviewLeaderboard() {
             <RankBadge rank={entry.rank} />
             <PlayerHead uuid={entry.uuid} username={entry.username} />
             <div className="flex-1 min-w-0">
-              <span className="font-bold text-foreground truncate block">{entry.username}</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-bold text-foreground truncate">{entry.username}</span>
+                <RegionBadge region={entry.region} />
+              </div>
               <span className="text-xs text-muted-foreground">{entry.rankedModes} mode{entry.rankedModes !== 1 ? "s" : ""} ranked</span>
+            </div>
+            <div className="w-24 text-right">
+              <WinLoss wins={entry.totalWins} losses={entry.totalLosses} />
             </div>
             <div className="w-24 text-right">
               <span className="font-mono font-bold text-sky-400 text-lg">{entry.totalPoints}</span>
               <span className="text-muted-foreground text-xs ml-0.5">pts</span>
-            </div>
-            <div className="w-20 text-right">
-              <span className="font-mono text-sm text-muted-foreground">{entry.totalWins.toLocaleString()}</span>
             </div>
           </div>
         </Link>
@@ -198,12 +230,10 @@ export default function LeaderboardPage() {
 
   return (
     <div className="relative min-h-screen bg-background">
-      {/* Background orbs */}
       <div className="bg-orbs" aria-hidden>
         <div className="bg-orb-3" />
       </div>
 
-      {/* Header */}
       <header className="glass-header sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -227,7 +257,6 @@ export default function LeaderboardPage() {
       </header>
 
       <main className="relative z-10 max-w-5xl mx-auto px-4 py-8">
-        {/* Mode Tabs */}
         <div className="glass-tabs rounded-2xl p-1.5 flex flex-wrap gap-1 mb-6">
           <button
             onClick={() => setActiveTab("overview")}
@@ -255,9 +284,7 @@ export default function LeaderboardPage() {
           ))}
         </div>
 
-        {/* Main card */}
         <div className="glass rounded-2xl overflow-hidden">
-          {/* Card header */}
           <div className="px-6 py-5 border-b border-white/6 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
@@ -269,7 +296,7 @@ export default function LeaderboardPage() {
               <p className="text-xs text-muted-foreground mt-0.5">
                 {activeTab === "overview"
                   ? "Players ranked by total ranking points across all modes"
-                  : "Players sorted by ranking points — top 50"}
+                  : "Players sorted by MMR — top 50"}
               </p>
             </div>
           </div>

@@ -45,6 +45,7 @@ export const GetLeaderboardResponse = zod.object({
       rank: zod.number(),
       uuid: zod.string(),
       username: zod.string(),
+      region: zod.string().nullish(),
       mmr: zod.number(),
       points: zod.number(),
       wins: zod.number(),
@@ -73,6 +74,7 @@ export const GetOverviewLeaderboardResponse = zod.object({
       rank: zod.number(),
       uuid: zod.string(),
       username: zod.string(),
+      region: zod.string().nullish(),
       totalMMR: zod.number(),
       totalPoints: zod.number(),
       rankedModes: zod.number(),
@@ -93,6 +95,7 @@ export const GetPlayerParams = zod.object({
 export const GetPlayerResponse = zod.object({
   uuid: zod.string(),
   username: zod.string(),
+  region: zod.string().nullish(),
   modes: zod.record(
     zod.string(),
     zod.object({

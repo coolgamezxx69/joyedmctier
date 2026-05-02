@@ -43,7 +43,11 @@ router.get("/leaderboard/overview", async (req, res) => {
   const limit = Math.min(Number(req.query.limit ?? 50), 200);
   try {
     const [rows] = await pool.execute<any[]>(
-      `SELECT p.uuid, p.username, ps.mode, ps.mmr, ps.fights,
+      `SELECT p.uuid, p.username, COALESCE(p.region, 'US') AS region,
+              ps.mode, ps.mmr,
+              COALESCE(ps.wins, 0) AS wins,
+              COALESCE(ps.losses, 0) AS losses,
+              COALESCE(ps.fights, 0) AS fights,
               CASE WHEN h.uuid IS NOT NULL THEN 1 ELSE 0 END AS isHT1
        FROM players p
        JOIN player_stats ps ON p.uuid = ps.uuid
@@ -52,16 +56,18 @@ router.get("/leaderboard/overview", async (req, res) => {
     );
 
     const playerMap = new Map<string, {
-      uuid: string; username: string;
+      uuid: string; username: string; region: string;
       totalMMR: number; totalPoints: number;
-      rankedModes: number; totalFights: number;
+      rankedModes: number; totalWins: number; totalLosses: number;
     }>();
 
     for (const r of rows as any[]) {
       if (!playerMap.has(r.uuid)) {
         playerMap.set(r.uuid, {
           uuid: r.uuid, username: r.username,
-          totalMMR: 0, totalPoints: 0, rankedModes: 0, totalFights: 0,
+          region: r.region ?? "US",
+          totalMMR: 0, totalPoints: 0, rankedModes: 0,
+          totalWins: 0, totalLosses: 0,
         });
       }
       const p = playerMap.get(r.uuid)!;
@@ -70,7 +76,8 @@ router.get("/leaderboard/overview", async (req, res) => {
       p.totalMMR += mmr;
       p.totalPoints += pointsFromTier(tier);
       p.rankedModes += 1;
-      p.totalFights += Number(r.fights ?? 0);
+      p.totalWins += Number(r.wins ?? 0);
+      p.totalLosses += Number(r.losses ?? 0);
     }
 
     const entries = [...playerMap.values()]
@@ -80,11 +87,12 @@ router.get("/leaderboard/overview", async (req, res) => {
         rank: i + 1,
         uuid: p.uuid,
         username: p.username,
+        region: p.region,
         totalMMR: p.totalMMR,
         totalPoints: p.totalPoints,
         rankedModes: p.rankedModes,
-        totalWins: p.totalFights,
-        totalLosses: 0,
+        totalWins: p.totalWins,
+        totalLosses: p.totalLosses,
       }));
 
     res.json({ entries });
@@ -111,7 +119,11 @@ router.get("/leaderboard/:mode", async (req, res) => {
     const ht1uuid: string | null = ht1Rows[0]?.uuid ?? null;
 
     const [rows] = await pool.execute<any[]>(
-      `SELECT p.uuid, p.username, ps.mmr, ps.fights
+      `SELECT p.uuid, p.username, COALESCE(p.region, 'US') AS region,
+              ps.mmr,
+              COALESCE(ps.wins, 0) AS wins,
+              COALESCE(ps.losses, 0) AS losses,
+              COALESCE(ps.fights, 0) AS fights
        FROM players p
        JOIN player_stats ps ON p.uuid = ps.uuid
        WHERE ps.mode = ? AND ps.fights >= 10
@@ -122,6 +134,8 @@ router.get("/leaderboard/:mode", async (req, res) => {
 
     const entries = rows.map((r: any, i: number) => {
       const fights = Number(r.fights ?? 0);
+      const wins = Number(r.wins ?? 0);
+      const losses = Number(r.losses ?? 0);
       const mmr = Number(r.mmr ?? 1000);
       const isHT1 = r.uuid === ht1uuid;
       const tier = isHT1 ? "HT1" : tierFromMMR(mmr);
@@ -129,10 +143,11 @@ router.get("/leaderboard/:mode", async (req, res) => {
         rank: i + 1,
         uuid: r.uuid,
         username: r.username,
+        region: r.region ?? "US",
         mmr,
         points: pointsFromTier(tier),
-        wins: fights,
-        losses: 0,
+        wins,
+        losses,
         fights,
         tier,
         isHT1,

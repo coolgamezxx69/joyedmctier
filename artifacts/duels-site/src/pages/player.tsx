@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, Link } from "wouter";
 import { useGetPlayer, getGetPlayerQueryKey } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MODES, TIER_COLORS, crafatarHeadUrl, crafatarUrl, pointsFromTier } from "@/lib/tiers";
+import { MODES, TIER_COLORS, crafatarUrl, pointsFromTier } from "@/lib/tiers";
 import { ArrowLeft, Crown, Trophy, Swords } from "lucide-react";
 import logoUrl from "@assets/joyedtier_1777740585038.png";
 
@@ -27,6 +27,20 @@ function TierBadge({ tier }: { tier: string }) {
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold font-mono tracking-wide ${cls}`}>
       {tier === "HT1" && <Crown className="w-3 h-3 mr-1 text-amber-300" />}
       {tier}
+    </span>
+  );
+}
+
+function RegionBadge({ region }: { region?: string | null }) {
+  if (!region) return null;
+  const isEU = region === "EU";
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold font-mono tracking-wider flex-shrink-0 ${
+      isEU
+        ? "bg-blue-500/15 text-blue-400 border border-blue-500/25"
+        : "bg-sky-500/15 text-sky-400 border border-sky-500/25"
+    }`}>
+      {region}
     </span>
   );
 }
@@ -86,8 +100,8 @@ export default function PlayerPage() {
             <Skeleton className="w-24 h-4" />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          {[1,2].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}
+        <div className="grid grid-cols-3 gap-3">
+          {[1,2,3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}
         </div>
         {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
       </main>
@@ -124,8 +138,11 @@ export default function PlayerPage() {
         {/* Player hero card */}
         <div className="glass rounded-2xl p-6 flex items-center gap-5">
           <PlayerHead uuid={data.uuid} username={data.username} size={80} />
-          <div>
-            <h1 className="text-3xl font-black text-foreground tracking-tight">{data.username}</h1>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-3xl font-black text-foreground tracking-tight">{data.username}</h1>
+              <RegionBadge region={data.region} />
+            </div>
             <p className="text-muted-foreground text-sm mt-1 flex items-center gap-1.5">
               <Swords className="w-3.5 h-3.5" />
               {rankedModes.length} mode{rankedModes.length !== 1 ? "s" : ""} ranked
@@ -134,7 +151,7 @@ export default function PlayerPage() {
         </div>
 
         {/* Summary stats */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div className="glass rounded-xl flex flex-col items-center p-5">
             <span className="text-3xl font-black font-mono text-sky-400">{totalPoints}</span>
             <span className="text-xs text-muted-foreground mt-1.5 uppercase tracking-wider flex items-center gap-1">
@@ -142,10 +159,14 @@ export default function PlayerPage() {
             </span>
           </div>
           <div className="glass rounded-xl flex flex-col items-center p-5">
-            <span className="text-3xl font-black font-mono text-foreground">{data.totalWins.toLocaleString()}</span>
+            <span className="text-3xl font-black font-mono text-emerald-400">{data.totalWins.toLocaleString()}</span>
             <span className="text-xs text-muted-foreground mt-1.5 uppercase tracking-wider flex items-center gap-1">
-              <Swords className="w-3 h-3" /> Total Fights
+              <Swords className="w-3 h-3" /> Wins
             </span>
+          </div>
+          <div className="glass rounded-xl flex flex-col items-center p-5">
+            <span className="text-3xl font-black font-mono text-red-400">{data.totalLosses.toLocaleString()}</span>
+            <span className="text-xs text-muted-foreground mt-1.5 uppercase tracking-wider">Losses</span>
           </div>
         </div>
 
@@ -180,10 +201,18 @@ export default function PlayerPage() {
                     </div>
                   </div>
                   {stats.placed && <ProgressBar value={stats.progress} tier={stats.isHT1 ? "HT1" : stats.tier} />}
-                  <div className="flex gap-6 text-sm">
+                  <div className="flex gap-6 text-sm flex-wrap">
                     <div>
                       <span className="text-muted-foreground text-xs uppercase tracking-wider block">MMR</span>
                       <span className="font-mono font-bold text-foreground">{stats.mmr.toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs uppercase tracking-wider block">Wins</span>
+                      <span className="font-mono font-bold text-emerald-400">{stats.wins.toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs uppercase tracking-wider block">Losses</span>
+                      <span className="font-mono font-bold text-red-400">{stats.losses.toLocaleString()}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground text-xs uppercase tracking-wider block">Fights</span>

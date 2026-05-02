@@ -13,6 +13,7 @@ export interface LeaderboardEntry {
   rank: number;
   uuid: string;
   username: string;
+  region?: string | null;
   mmr: number;
   points: number;
   wins: number;
@@ -32,6 +33,7 @@ export interface OverviewEntry {
   rank: number;
   uuid: string;
   username: string;
+  region?: string | null;
   totalMMR: number;
   totalPoints: number;
   rankedModes: number;
@@ -59,6 +61,7 @@ export type PlayerProfileResponseModes = { [key: string]: ModeStats };
 export interface PlayerProfileResponse {
   uuid: string;
   username: string;
+  region?: string | null;
   modes: PlayerProfileResponseModes;
   totalMMR: number;
   totalWins: number;
