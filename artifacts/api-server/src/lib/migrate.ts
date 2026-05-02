@@ -4,7 +4,9 @@ import { logger } from "./logger";
 const migrations = [
   `ALTER TABLE player_stats ADD COLUMN wins INT NOT NULL DEFAULT 0`,
   `ALTER TABLE player_stats ADD COLUMN losses INT NOT NULL DEFAULT 0`,
-  `ALTER TABLE players ADD COLUMN region VARCHAR(2) NOT NULL DEFAULT 'US'`,
+  `ALTER TABLE players ADD COLUMN region VARCHAR(4) NOT NULL DEFAULT 'US'`,
+  `ALTER TABLE players ADD COLUMN ip VARCHAR(45) DEFAULT NULL`,
+  `ALTER TABLE players ADD COLUMN region_checked TINYINT(1) NOT NULL DEFAULT 0`,
 ];
 
 export async function runMigrations(): Promise<void> {
