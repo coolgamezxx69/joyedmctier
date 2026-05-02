@@ -1849,6 +1849,24 @@ command /sudo <player> [<text>]:
         send "&aForcing %arg-1% to run: /%arg-2%" to player
 
 # ============================================================
+#  COMMAND: /setregion <player> <EU|US>
+# ============================================================
+command /setregion <offline player> <text>:
+    permission: op
+    trigger:
+        if {duels.db} is not set:
+            send "&c[JoyedTiers] Database not connected." to player
+            stop
+        set {_region} to arg-2
+        if {_region} is not "EU":
+            if {_region} is not "US":
+                send "&c[JoyedTiers] Region must be EU or US." to player
+                stop
+        set {_uuid} to "%uuid of arg-1%"
+        execute unsafe "UPDATE players SET region = '%{_region}%', region_checked = 1 WHERE uuid = '%{_uuid}%'" in {duels.db}
+        send "&a[JoyedTiers] Set %arg-1%'s region to &f%{_region}%&a." to player
+
+# ============================================================
 #  DEBUG
 # ============================================================
 command /testing:
