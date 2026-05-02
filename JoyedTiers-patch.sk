@@ -1,0 +1,18 @@
+# ============================================================
+#  JoyedTiers — DB Patch
+#  Drop this file alongside your existing elo1sk.sk.
+#  It adds the wins, losses and region columns automatically.
+#  Do NOT rename or edit — just place it in the scripts folder.
+# ============================================================
+
+on load:
+    # Wait for elo1sk.sk to connect {duels.db} first
+    wait 3 seconds
+    if {duels.db} is not set:
+        broadcast "&c[JoyedTiers] Patch: {duels.db} not set. Make sure elo1sk.sk loaded first."
+        stop
+    execute "ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS wins INT NOT NULL DEFAULT 0" in {duels.db}
+    execute "ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS losses INT NOT NULL DEFAULT 0" in {duels.db}
+    execute "ALTER TABLE players ADD COLUMN IF NOT EXISTS region VARCHAR(4) NOT NULL DEFAULT 'US'" in {duels.db}
+    execute "UPDATE players SET region = 'US' WHERE region IS NULL OR region = ''" in {duels.db}
+    broadcast "&8[&6JoyedTiers&8] &aColumns verified &7(wins, losses, region)."

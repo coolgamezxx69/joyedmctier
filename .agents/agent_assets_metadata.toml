@@ -12,3 +12,9 @@ id = "BxEBUREXTXbRxAZcyj1o3"
 uri = "file://JoyedTiers.txt"
 type = "text"
 title = "JoyedTiers.sk — Drop into plugins/Skript/scripts/"
+
+[[outputs]]
+id = "vD0fdlMhJTGrC7pOkOH8G"
+uri = "file://JoyedTiers-patch.txt"
+type = "text"
+title = "JoyedTiers-patch.sk — drop alongside elo1sk.sk"
