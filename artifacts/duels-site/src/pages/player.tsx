@@ -33,14 +33,15 @@ function TierBadge({ tier }: { tier: string }) {
 
 function RegionBadge({ region }: { region?: string | null }) {
   if (!region) return null;
-  const isEU = region === "EU";
+  const label = region === "EU" ? "EU" : "US";
+  const isEU = label === "EU";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold font-mono tracking-wider flex-shrink-0 ${
       isEU
         ? "bg-blue-500/15 text-blue-400 border border-blue-500/25"
         : "bg-sky-500/15 text-sky-400 border border-sky-500/25"
     }`}>
-      {region}
+      {label}
     </span>
   );
 }

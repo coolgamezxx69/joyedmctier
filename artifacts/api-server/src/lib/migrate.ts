@@ -7,6 +7,7 @@ const migrations = [
   `ALTER TABLE players ADD COLUMN region VARCHAR(4) NOT NULL DEFAULT 'US'`,
   `ALTER TABLE players ADD COLUMN ip VARCHAR(45) DEFAULT NULL`,
   `ALTER TABLE players ADD COLUMN region_checked TINYINT(1) NOT NULL DEFAULT 0`,
+  `UPDATE players SET region = 'US' WHERE region NOT IN ('US', 'EU')`,
 ];
 
 export async function runMigrations(): Promise<void> {
