@@ -6,3 +6,9 @@ id = "ZpyaPHgNf1F6oMmV-QsIL"
 uri = "file://JoyedTiers-region-wl.txt"
 type = "text"
 title = "JoyedTiers-region-wl.sk — Wins, Losses & Region Skript"
+
+[[outputs]]
+id = "BxEBUREXTXbRxAZcyj1o3"
+uri = "file://JoyedTiers.txt"
+type = "text"
+title = "JoyedTiers.sk — Drop into plugins/Skript/scripts/"

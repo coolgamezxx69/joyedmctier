@@ -21,13 +21,13 @@ function TierBadge({ tier }: { tier: string }) {
   );
 }
 
-function PlayerHead({ uuid, username }: { uuid: string; username: string }) {
+function PlayerHead({ username }: { uuid: string; username: string }) {
   const [errored, setErrored] = useState(false);
   return (
     <img
       src={errored
-        ? `https://crafatar.com/avatars/8667ba71b85a4004af54457a9734eed7?size=40&overlay=true`
-        : crafatarUrl(uuid, 40)}
+        ? `https://minotar.net/helm/MHF_Steve/40`
+        : `https://minotar.net/helm/${username}/40`}
       alt={username}
       className="w-10 h-10 flex-shrink-0 drop-shadow-lg"
       style={{ imageRendering: "pixelated" }}

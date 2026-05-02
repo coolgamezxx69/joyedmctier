@@ -6,13 +6,13 @@ import { MODES, TIER_COLORS, crafatarUrl, pointsFromTier } from "@/lib/tiers";
 import { ArrowLeft, Crown, Trophy, Swords } from "lucide-react";
 import logoUrl from "@assets/joyedtier_1777740585038.png";
 
-function PlayerHead({ uuid, username, size = 80 }: { uuid: string; username: string; size?: number }) {
+function PlayerHead({ username, size = 80 }: { uuid: string; username: string; size?: number }) {
   const [errored, setErrored] = useState(false);
   return (
     <img
       src={errored
-        ? `https://crafatar.com/avatars/8667ba71b85a4004af54457a9734eed7?size=${size}&overlay=true`
-        : crafatarUrl(uuid, size)}
+        ? `https://minotar.net/helm/MHF_Steve/${size}`
+        : `https://minotar.net/helm/${username}/${size}`}
       alt={username}
       className="flex-shrink-0 drop-shadow-2xl"
       style={{ imageRendering: "pixelated", width: size, height: size }}
