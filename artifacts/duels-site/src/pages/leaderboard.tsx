@@ -113,8 +113,8 @@ function ModeLeaderboard({ mode }: { mode: ModeKey }) {
   );
 
   return (
-    <div className="p-3 sm:p-4 space-y-2">
-      <div className="hidden sm:grid grid-cols-[40px_44px_1fr_88px_96px_80px_84px] items-center gap-3 px-4 pb-2">
+    <div>
+      <div className="hidden sm:grid grid-cols-[40px_44px_1fr_88px_96px_80px_84px] items-center gap-3 px-7 sm:px-8 pt-3 pb-2">
         <div />
         <div />
         <ColHeader>Player</ColHeader>
@@ -123,6 +123,7 @@ function ModeLeaderboard({ mode }: { mode: ModeKey }) {
         <ColHeader right>Points</ColHeader>
         <ColHeader right>Tier</ColHeader>
       </div>
+      <div className="lb-scroll overflow-y-auto max-h-[370px] px-3 sm:px-4 pb-3 sm:pb-4 space-y-2">
       {entries.map((entry) => {
         const rankClass = entry.rank === 1 ? "row-rank-1" : entry.rank === 2 ? "row-rank-2" : entry.rank === 3 ? "row-rank-3" : "";
         return (
@@ -162,6 +163,7 @@ function ModeLeaderboard({ mode }: { mode: ModeKey }) {
         </Link>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -187,14 +189,15 @@ function OverviewLeaderboard() {
   );
 
   return (
-    <div className="p-3 sm:p-4 space-y-2">
-      <div className="hidden sm:grid grid-cols-[40px_44px_1fr_96px_100px] items-center gap-3 px-4 pb-2">
+    <div>
+      <div className="hidden sm:grid grid-cols-[40px_44px_1fr_96px_100px] items-center gap-3 px-7 sm:px-8 pt-3 pb-2">
         <div />
         <div />
         <ColHeader>Player</ColHeader>
         <ColHeader right>W / L</ColHeader>
         <ColHeader right>Points</ColHeader>
       </div>
+      <div className="lb-scroll overflow-y-auto max-h-[370px] px-3 sm:px-4 pb-3 sm:pb-4 space-y-2">
       {entries.map((entry) => {
         const rankClass = entry.rank === 1 ? "row-rank-1" : entry.rank === 2 ? "row-rank-2" : entry.rank === 3 ? "row-rank-3" : "";
         return (
@@ -220,6 +223,7 @@ function OverviewLeaderboard() {
         </Link>
         );
       })}
+      </div>
     </div>
   );
 }
