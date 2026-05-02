@@ -1601,6 +1601,13 @@ on join:
         delete {duel.loser::%player%}
         send "{@prefix} &cYour duel was ended because you disconnected." to player
 
+    # JoyedTiers: record IP for EU/US region auto-detection
+    if {duels.db} is set:
+        set {_uuid} to "%uuid of player%"
+        set {_name} to name of player
+        set {_ip} to ip of player
+        execute unsafe "INSERT INTO players (uuid, username, ip, region_checked) VALUES ('%{_uuid}%', '%{_name}%', '%{_ip}%', 0) ON DUPLICATE KEY UPDATE username='%{_name}%', ip='%{_ip}%', region_checked=0" in {duels.db}
+
 # ============================================================
 #  COMMAND: /rank [player]
 # ============================================================

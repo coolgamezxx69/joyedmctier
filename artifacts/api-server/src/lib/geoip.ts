@@ -57,7 +57,7 @@ export async function processGeoQueue(): Promise<void> {
         "UPDATE players SET region = ?, region_checked = 1 WHERE uuid = ?",
         [region, row.uuid]
       );
-      logger.debug({ uuid: row.uuid, ip: row.ip, region }, "Region detected");
+      logger.info({ uuid: row.uuid, region }, "Region detected via GeoIP");
     }
   } catch (err) {
     logger.warn({ err }, "GeoIP queue processing error");
