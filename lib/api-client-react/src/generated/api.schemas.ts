@@ -8,3 +8,69 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface LeaderboardEntry {
+  rank: number;
+  uuid: string;
+  username: string;
+  mmr: number;
+  wins: number;
+  losses: number;
+  fights: number;
+  tier: string;
+  isHT1: boolean;
+  progress: number;
+}
+
+export interface LeaderboardResponse {
+  mode: string;
+  entries: LeaderboardEntry[];
+}
+
+export interface OverviewEntry {
+  rank: number;
+  uuid: string;
+  username: string;
+  totalMMR: number;
+  rankedModes: number;
+  totalWins: number;
+  totalLosses: number;
+}
+
+export interface OverviewLeaderboardResponse {
+  entries: OverviewEntry[];
+}
+
+export interface ModeStats {
+  mmr: number;
+  wins: number;
+  losses: number;
+  fights: number;
+  tier: string;
+  isHT1: boolean;
+  progress: number;
+  placed: boolean;
+}
+
+export type PlayerProfileResponseModes = { [key: string]: ModeStats };
+
+export interface PlayerProfileResponse {
+  uuid: string;
+  username: string;
+  modes: PlayerProfileResponseModes;
+  totalMMR: number;
+  totalWins: number;
+  totalLosses: number;
+}
+
+export interface ErrorResponse {
+  error: string;
+}
+
+export type GetLeaderboardParams = {
+  limit?: number;
+};
+
+export type GetOverviewLeaderboardParams = {
+  limit?: number;
+};

@@ -13,7 +13,15 @@ import type {
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  ErrorResponse,
+  GetLeaderboardParams,
+  GetOverviewLeaderboardParams,
+  HealthStatus,
+  LeaderboardResponse,
+  OverviewLeaderboardResponse,
+  PlayerProfileResponse,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
 import type { ErrorType } from "../custom-fetch";
@@ -92,6 +100,346 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns ranked players for a specific gamemode
+ * @summary Get leaderboard for a mode
+ */
+export const getGetLeaderboardUrl = (
+  mode:
+    | "sword"
+    | "axe"
+    | "dpot"
+    | "nethpot"
+    | "smp"
+    | "crystal"
+    | "mace"
+    | "uhc",
+  params?: GetLeaderboardParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/leaderboard/${mode}?${stringifiedParams}`
+    : `/api/leaderboard/${mode}`;
+};
+
+export const getLeaderboard = async (
+  mode:
+    | "sword"
+    | "axe"
+    | "dpot"
+    | "nethpot"
+    | "smp"
+    | "crystal"
+    | "mace"
+    | "uhc",
+  params?: GetLeaderboardParams,
+  options?: RequestInit,
+): Promise<LeaderboardResponse> => {
+  return customFetch<LeaderboardResponse>(getGetLeaderboardUrl(mode, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLeaderboardQueryKey = (
+  mode:
+    | "sword"
+    | "axe"
+    | "dpot"
+    | "nethpot"
+    | "smp"
+    | "crystal"
+    | "mace"
+    | "uhc",
+  params?: GetLeaderboardParams,
+) => {
+  return [`/api/leaderboard/${mode}`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetLeaderboardQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLeaderboard>>,
+  TError = ErrorType<unknown>,
+>(
+  mode:
+    | "sword"
+    | "axe"
+    | "dpot"
+    | "nethpot"
+    | "smp"
+    | "crystal"
+    | "mace"
+    | "uhc",
+  params?: GetLeaderboardParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLeaderboard>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetLeaderboardQueryKey(mode, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeaderboard>>> = ({
+    signal,
+  }) => getLeaderboard(mode, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!mode,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLeaderboard>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLeaderboardQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLeaderboard>>
+>;
+export type GetLeaderboardQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get leaderboard for a mode
+ */
+
+export function useGetLeaderboard<
+  TData = Awaited<ReturnType<typeof getLeaderboard>>,
+  TError = ErrorType<unknown>,
+>(
+  mode:
+    | "sword"
+    | "axe"
+    | "dpot"
+    | "nethpot"
+    | "smp"
+    | "crystal"
+    | "mace"
+    | "uhc",
+  params?: GetLeaderboardParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLeaderboard>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLeaderboardQueryOptions(mode, params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns top players ranked by total MMR across all modes
+ * @summary Get overall top players across all modes
+ */
+export const getGetOverviewLeaderboardUrl = (
+  params?: GetOverviewLeaderboardParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/leaderboard/overview?${stringifiedParams}`
+    : `/api/leaderboard/overview`;
+};
+
+export const getOverviewLeaderboard = async (
+  params?: GetOverviewLeaderboardParams,
+  options?: RequestInit,
+): Promise<OverviewLeaderboardResponse> => {
+  return customFetch<OverviewLeaderboardResponse>(
+    getGetOverviewLeaderboardUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetOverviewLeaderboardQueryKey = (
+  params?: GetOverviewLeaderboardParams,
+) => {
+  return [`/api/leaderboard/overview`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetOverviewLeaderboardQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOverviewLeaderboard>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetOverviewLeaderboardParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOverviewLeaderboard>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetOverviewLeaderboardQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getOverviewLeaderboard>>
+  > = ({ signal }) =>
+    getOverviewLeaderboard(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOverviewLeaderboard>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOverviewLeaderboardQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOverviewLeaderboard>>
+>;
+export type GetOverviewLeaderboardQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get overall top players across all modes
+ */
+
+export function useGetOverviewLeaderboard<
+  TData = Awaited<ReturnType<typeof getOverviewLeaderboard>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetOverviewLeaderboardParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOverviewLeaderboard>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOverviewLeaderboardQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns a player's stats across all modes
+ * @summary Get player profile
+ */
+export const getGetPlayerUrl = (username: string) => {
+  return `/api/player/${username}`;
+};
+
+export const getPlayer = async (
+  username: string,
+  options?: RequestInit,
+): Promise<PlayerProfileResponse> => {
+  return customFetch<PlayerProfileResponse>(getGetPlayerUrl(username), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPlayerQueryKey = (username: string) => {
+  return [`/api/player/${username}`] as const;
+};
+
+export const getGetPlayerQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPlayer>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  username: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPlayer>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPlayerQueryKey(username);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPlayer>>> = ({
+    signal,
+  }) => getPlayer(username, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!username,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getPlayer>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetPlayerQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPlayer>>
+>;
+export type GetPlayerQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get player profile
+ */
+
+export function useGetPlayer<
+  TData = Awaited<ReturnType<typeof getPlayer>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  username: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPlayer>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPlayerQueryOptions(username, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

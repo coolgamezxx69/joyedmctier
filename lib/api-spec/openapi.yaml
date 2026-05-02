@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: leaderboard
+    description: Leaderboard operations
+  - name: players
+    description: Player operations
 paths:
   /healthz:
     get:
@@ -24,6 +28,81 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /leaderboard/{mode}:
+    get:
+      operationId: getLeaderboard
+      tags: [leaderboard]
+      summary: Get leaderboard for a mode
+      description: Returns ranked players for a specific gamemode
+      parameters:
+        - name: mode
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [sword, axe, dpot, nethpot, smp, crystal, mace, uhc]
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Leaderboard entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaderboardResponse"
+
+  /leaderboard/overview:
+    get:
+      operationId: getOverviewLeaderboard
+      tags: [leaderboard]
+      summary: Get overall top players across all modes
+      description: Returns top players ranked by total MMR across all modes
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Overview leaderboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OverviewLeaderboardResponse"
+
+  /player/{username}:
+    get:
+      operationId: getPlayer
+      tags: [players]
+      summary: Get player profile
+      description: Returns a player's stats across all modes
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Player profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerProfileResponse"
+        "404":
+          description: Player not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +113,148 @@ components:
       required:
         - status
 
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        uuid:
+          type: string
+        username:
+          type: string
+        mmr:
+          type: integer
+        wins:
+          type: integer
+        losses:
+          type: integer
+        fights:
+          type: integer
+        tier:
+          type: string
+        isHT1:
+          type: boolean
+        progress:
+          type: integer
+      required:
+        - rank
+        - uuid
+        - username
+        - mmr
+        - wins
+        - losses
+        - fights
+        - tier
+        - isHT1
+        - progress
+
+    LeaderboardResponse:
+      type: object
+      properties:
+        mode:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardEntry"
+      required:
+        - mode
+        - entries
+
+    OverviewEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        uuid:
+          type: string
+        username:
+          type: string
+        totalMMR:
+          type: integer
+        rankedModes:
+          type: integer
+        totalWins:
+          type: integer
+        totalLosses:
+          type: integer
+      required:
+        - rank
+        - uuid
+        - username
+        - totalMMR
+        - rankedModes
+        - totalWins
+        - totalLosses
+
+    OverviewLeaderboardResponse:
+      type: object
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/OverviewEntry"
+      required:
+        - entries
+
+    ModeStats:
+      type: object
+      properties:
+        mmr:
+          type: integer
+        wins:
+          type: integer
+        losses:
+          type: integer
+        fights:
+          type: integer
+        tier:
+          type: string
+        isHT1:
+          type: boolean
+        progress:
+          type: integer
+        placed:
+          type: boolean
+      required:
+        - mmr
+        - wins
+        - losses
+        - fights
+        - tier
+        - isHT1
+        - progress
+        - placed
+
+    PlayerProfileResponse:
+      type: object
+      properties:
+        uuid:
+          type: string
+        username:
+          type: string
+        modes:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ModeStats"
+        totalMMR:
+          type: integer
+        totalWins:
+          type: integer
+        totalLosses:
+          type: integer
+      required:
+        - uuid
+        - username
+        - modes
+        - totalMMR
+        - totalWins
+        - totalLosses
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
