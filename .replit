@@ -18,3 +18,11 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+MYSQL_HOST = "na01-sql.pebblehost.com"
+MYSQL_PORT = "3306"
+MYSQL_DATABASE = "customer_1361378_JoyedTiers"
+MYSQL_USER = "customer_1361378_JoyedTiers"
