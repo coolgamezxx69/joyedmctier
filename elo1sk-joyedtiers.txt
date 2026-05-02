@@ -1,4 +1,4 @@
-    options:
+options:
     prefix: &b&lDuels&b » 
     db-host: na01-sql.pebblehost.com
     db-port: 3306
@@ -139,8 +139,14 @@ function applyDuelMMR(winner: player, loser: player, mode: text):
     set {fights.%{_mode}%::%{_wUUID}%} to {_wFights} + 1
     set {fights.%{_mode}%::%{_lUUID}%} to {_lFights} + 1
 
-    add 1 to {wins.%{_mode}%::%{_wUUID}%}
-    add 1 to {losses.%{_mode}%::%{_lUUID}%}
+    if {wins.%{_mode}%::%{_wUUID}%} is set:
+        set {wins.%{_mode}%::%{_wUUID}%} to {wins.%{_mode}%::%{_wUUID}%} + 1
+    else:
+        set {wins.%{_mode}%::%{_wUUID}%} to 1
+    if {losses.%{_mode}%::%{_lUUID}%} is set:
+        set {losses.%{_mode}%::%{_lUUID}%} to {losses.%{_mode}%::%{_lUUID}%} + 1
+    else:
+        set {losses.%{_mode}%::%{_lUUID}%} to 1
 
     set {mmr.lastfight.%{_mode}%::%{_wUUID}%} to now
     set {mmr.lastfight.%{_mode}%::%{_lUUID}%} to now
@@ -174,6 +180,8 @@ function applyDuelMMR(winner: player, loser: player, mode: text):
         send "" to all players
         send "&c&lYou lost the HT1 throne in %{_modeName}% and have been placed into LT1." to {_loser}
         send "&a&lYou are now HT1 in %{_modeName}% — the best on the server!" to {_winner}
+        call syncPlayerToWebsite({_winner}, {_mode})
+        call syncPlayerToWebsite({_loser}, {_mode})
         stop
 
     if {ht1holder.%{_mode}%} is not set:
@@ -1832,6 +1840,27 @@ command /mmrreset <player> [<text>]:
                 if {ht1holder.%loop-value%} is {_uuid}:
                     delete {ht1holder.%loop-value%}
             send "&aReset all MMR for %name of arg 1% to 1000 with 0 fights." to player
+
+# ============================================================
+#  ADMIN: /resetallstats  — wipe every player's stats (OP only)
+# ============================================================
+command /resetallstats:
+    permission: op
+    trigger:
+        if {duels.db} is not set:
+            send "&c[JoyedTiers] Database not connected." to player
+            stop
+        loop "sword", "axe", "dpot", "nethpot", "smp", "crystal", "mace", "uhc":
+            delete {mmr.%loop-value%::*}
+            delete {fights.%loop-value%::*}
+            delete {wins.%loop-value%::*}
+            delete {losses.%loop-value%::*}
+            delete {mmr.lastfight.%loop-value%::*}
+            delete {ht1holder.%loop-value%}
+        execute unsafe "TRUNCATE TABLE player_stats" in {duels.db}
+        execute unsafe "TRUNCATE TABLE ht1_holders" in {duels.db}
+        send "&a&l[JoyedTiers] All duel stats have been fully reset to zero!" to player
+        broadcast "&c&l[JoyedTiers] &7All ranked stats have been reset by &f%name of player%&7."
 
 # ============================================================
 #  ADMIN: /sudo <player> <command>
