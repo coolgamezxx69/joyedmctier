@@ -46,8 +46,7 @@ router.get("/player/:username", async (req, res) => {
     const uuid = player.uuid;
 
     const [statsRows] = await pool.execute<any[]>(
-      `SELECT ps.mode, ps.mmr, ps.fights,
-              COALESCE(ps.wins, 0) AS wins
+      `SELECT ps.mode, ps.mmr, ps.fights
        FROM player_stats ps
        WHERE ps.uuid = ?`,
       [uuid]
@@ -61,21 +60,18 @@ router.get("/player/:username", async (req, res) => {
 
     const modes: Record<string, any> = {};
     let totalMMR = 0;
-    let totalWins = 0;
-    let totalLosses = 0;
+    let totalFights = 0;
 
     for (const row of statsRows) {
       const mmr = Number(row.mmr ?? 1000);
-      const wins = Number(row.wins ?? 0);
       const fights = Number(row.fights ?? 0);
-      const losses = Math.max(0, fights - wins);
       const isHT1 = ht1modes.has(row.mode);
       const placed = fights >= 10;
 
       modes[row.mode] = {
         mmr,
-        wins,
-        losses,
+        wins: fights,
+        losses: 0,
         fights,
         tier: isHT1 ? "HT1" : placed ? tierFromMMR(mmr) : "Unranked",
         isHT1,
@@ -85,8 +81,7 @@ router.get("/player/:username", async (req, res) => {
 
       if (placed) {
         totalMMR += mmr;
-        totalWins += wins;
-        totalLosses += losses;
+        totalFights += fights;
       }
     }
 
@@ -95,8 +90,8 @@ router.get("/player/:username", async (req, res) => {
       username: player.username,
       modes,
       totalMMR,
-      totalWins,
-      totalLosses,
+      totalWins: totalFights,
+      totalLosses: 0,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get player profile");
