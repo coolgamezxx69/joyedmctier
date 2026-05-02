@@ -21,14 +21,22 @@ function TierBadge({ tier }: { tier: string }) {
   );
 }
 
-function PlayerHead({ username }: { uuid: string; username: string }) {
+function PlayerHead({ username, rank }: { uuid: string; username: string; rank?: number }) {
   const [errored, setErrored] = useState(false);
+  const ringStyle =
+    rank === 1
+      ? { boxShadow: "0 0 0 2px rgba(251,191,36,.75), 0 0 12px rgba(251,191,36,.35)" }
+      : rank === 2
+      ? { boxShadow: "0 0 0 2px rgba(203,213,225,.55), 0 0 8px rgba(203,213,225,.2)" }
+      : rank === 3
+      ? { boxShadow: "0 0 0 2px rgba(251,146,60,.6), 0 0 8px rgba(251,146,60,.25)" }
+      : undefined;
   return (
-    <div className="relative flex-shrink-0">
+    <div className="relative flex-shrink-0 rounded-lg" style={ringStyle}>
       <img
         src={errored ? `https://minotar.net/helm/MHF_Steve/40` : `https://minotar.net/helm/${username}/40`}
         alt={username}
-        className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg shadow-lg"
+        className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg shadow-lg block"
         style={{ imageRendering: "pixelated" }}
         onError={() => setErrored(true)}
       />
@@ -63,7 +71,7 @@ function WinLoss({ wins, losses }: { wins: number; losses: number }) {
 
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) return (
-    <span className="rank-1 inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-sm font-black font-mono flex-shrink-0">1</span>
+    <span className="rank-1 inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl text-base sm:text-lg font-black font-mono flex-shrink-0">1</span>
   );
   if (rank === 2) return (
     <span className="rank-2 inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-sm font-black font-mono flex-shrink-0">2</span>
@@ -72,7 +80,7 @@ function RankBadge({ rank }: { rank: number }) {
     <span className="rank-3 inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-sm font-black font-mono flex-shrink-0">3</span>
   );
   return (
-    <span className="inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-sm font-bold font-mono text-muted-foreground flex-shrink-0">{rank}</span>
+    <span className="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-sm font-bold font-mono text-muted-foreground/60 flex-shrink-0">{rank}</span>
   );
 }
 
@@ -115,11 +123,13 @@ function ModeLeaderboard({ mode }: { mode: ModeKey }) {
         <ColHeader right>Points</ColHeader>
         <ColHeader right>Tier</ColHeader>
       </div>
-      {entries.map((entry) => (
+      {entries.map((entry) => {
+        const rankClass = entry.rank === 1 ? "row-rank-1" : entry.rank === 2 ? "row-rank-2" : entry.rank === 3 ? "row-rank-3" : "";
+        return (
         <Link key={entry.uuid} href={`/player/${entry.username}`}>
-          <div className={`glass-card rounded-2xl px-3 sm:px-4 py-3 sm:py-3.5 grid grid-cols-[36px_40px_1fr_auto] sm:grid-cols-[40px_44px_1fr_88px_96px_80px_84px] items-center gap-2 sm:gap-3 cursor-pointer ${entry.isHT1 ? "row-ht1" : ""} ${TIER_BORDER_GLOW[entry.tier] ?? ""}`}>
+          <div className={`glass-card rounded-2xl px-3 sm:px-4 py-3 sm:py-3.5 grid grid-cols-[36px_40px_1fr_auto] sm:grid-cols-[40px_44px_1fr_88px_96px_80px_84px] items-center gap-2 sm:gap-3 cursor-pointer ${entry.isHT1 ? "row-ht1" : ""} ${rankClass} ${TIER_BORDER_GLOW[entry.tier] ?? ""}`}>
             <RankBadge rank={entry.rank} />
-            <PlayerHead uuid={entry.uuid} username={entry.username} />
+            <PlayerHead uuid={entry.uuid} username={entry.username} rank={entry.rank} />
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-bold text-foreground truncate text-sm sm:text-[15px]">{entry.username}</span>
@@ -150,7 +160,8 @@ function ModeLeaderboard({ mode }: { mode: ModeKey }) {
             </div>
           </div>
         </Link>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -184,11 +195,13 @@ function OverviewLeaderboard() {
         <ColHeader right>W / L</ColHeader>
         <ColHeader right>Points</ColHeader>
       </div>
-      {entries.map((entry) => (
+      {entries.map((entry) => {
+        const rankClass = entry.rank === 1 ? "row-rank-1" : entry.rank === 2 ? "row-rank-2" : entry.rank === 3 ? "row-rank-3" : "";
+        return (
         <Link key={entry.uuid} href={`/player/${entry.username}`}>
-          <div className="glass-card rounded-2xl px-3 sm:px-4 py-3 sm:py-3.5 grid grid-cols-[36px_40px_1fr_auto] sm:grid-cols-[40px_44px_1fr_96px_100px] items-center gap-2 sm:gap-3 cursor-pointer">
+          <div className={`glass-card rounded-2xl px-3 sm:px-4 py-3 sm:py-3.5 grid grid-cols-[36px_40px_1fr_auto] sm:grid-cols-[40px_44px_1fr_96px_100px] items-center gap-2 sm:gap-3 cursor-pointer ${rankClass}`}>
             <RankBadge rank={entry.rank} />
-            <PlayerHead uuid={entry.uuid} username={entry.username} />
+            <PlayerHead uuid={entry.uuid} username={entry.username} rank={entry.rank} />
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-bold text-foreground truncate text-sm sm:text-[15px]">{entry.username}</span>
@@ -205,7 +218,8 @@ function OverviewLeaderboard() {
             </div>
           </div>
         </Link>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -340,7 +354,7 @@ export default function LeaderboardPage() {
           <div className="glass rounded-[1.1rem] overflow-hidden">
             {/* Panel header */}
             <div className="px-5 sm:px-8 py-5 sm:py-6 flex items-center justify-between"
-              style={{ background: "linear-gradient(to bottom, rgba(255,255,255,.045), rgba(255,255,255,.01))", borderBottom: "1px solid rgba(255,255,255,.09)" }}>
+              style={{ background: "linear-gradient(to bottom, rgba(255,255,255,.05), rgba(255,255,255,.01))" }}>
               <div>
                 <h2 className="text-lg sm:text-xl font-black text-foreground tracking-tight flex items-center gap-2.5">
                   {activeTab === "overview"
@@ -360,6 +374,7 @@ export default function LeaderboardPage() {
                 <span className="text-[11px] font-mono font-semibold text-sky-400 tracking-wide">LIVE</span>
               </div>
             </div>
+            <div className="glass-rainbow-line" />
 
             {activeTab === "overview"
               ? <OverviewLeaderboard />

@@ -268,12 +268,96 @@
   padding: 1px;
   background: linear-gradient(
     145deg,
-    rgba(255,255,255,.22) 0%,
-    rgba(255,255,255,.06) 30%,
-    rgba(255,255,255,.02) 60%,
-    rgba(255,255,255,.1) 100%
+    rgba(56,189,248,.35) 0%,
+    rgba(99,102,241,.2) 30%,
+    rgba(139,92,246,.15) 60%,
+    rgba(56,189,248,.25) 100%
   );
   border-radius: 1.15rem;
+  box-shadow: 0 0 40px rgba(56,189,248,.08), 0 0 80px rgba(139,92,246,.06);
+}
+
+/* ── Rainbow separator line inside panel ────────────────── */
+.glass-rainbow-line {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(56,189,248,.7) 20%,
+    rgba(99,102,241,.55) 45%,
+    rgba(139,92,246,.5) 65%,
+    rgba(56,189,248,.3) 85%,
+    transparent 100%
+  );
+  flex-shrink: 0;
+}
+
+/* ── Top-3 row accent strips ────────────────────────────── */
+.glass-card.row-rank-1 {
+  border-left: 3px solid rgba(251,191,36,.85);
+  border-top-left-radius: 0.85rem;
+  border-bottom-left-radius: 0.85rem;
+  background: linear-gradient(
+    100deg,
+    rgba(251,191,36,.1) 0%,
+    rgba(251,191,36,.04) 18%,
+    rgba(255,255,255,.055) 40%,
+    rgba(255,255,255,.008) 100%
+  );
+}
+.glass-card.row-rank-1:hover {
+  border-left-color: rgba(251,191,36,.95);
+  background: linear-gradient(
+    100deg,
+    rgba(251,191,36,.15) 0%,
+    rgba(251,191,36,.06) 18%,
+    rgba(255,255,255,.08) 40%,
+    rgba(255,255,255,.015) 100%
+  );
+}
+.glass-card.row-rank-2 {
+  border-left: 3px solid rgba(226,232,240,.5);
+  border-top-left-radius: 0.85rem;
+  border-bottom-left-radius: 0.85rem;
+  background: linear-gradient(
+    100deg,
+    rgba(226,232,240,.07) 0%,
+    rgba(226,232,240,.025) 18%,
+    rgba(255,255,255,.055) 40%,
+    rgba(255,255,255,.008) 100%
+  );
+}
+.glass-card.row-rank-2:hover {
+  border-left-color: rgba(226,232,240,.7);
+  background: linear-gradient(
+    100deg,
+    rgba(226,232,240,.11) 0%,
+    rgba(226,232,240,.04) 18%,
+    rgba(255,255,255,.08) 40%,
+    rgba(255,255,255,.015) 100%
+  );
+}
+.glass-card.row-rank-3 {
+  border-left: 3px solid rgba(251,146,60,.65);
+  border-top-left-radius: 0.85rem;
+  border-bottom-left-radius: 0.85rem;
+  background: linear-gradient(
+    100deg,
+    rgba(251,146,60,.08) 0%,
+    rgba(251,146,60,.03) 18%,
+    rgba(255,255,255,.055) 40%,
+    rgba(255,255,255,.008) 100%
+  );
+}
+.glass-card.row-rank-3:hover {
+  border-left-color: rgba(251,146,60,.85);
+  background: linear-gradient(
+    100deg,
+    rgba(251,146,60,.13) 0%,
+    rgba(251,146,60,.05) 18%,
+    rgba(255,255,255,.08) 40%,
+    rgba(255,255,255,.015) 100%
+  );
 }
 
 /* ── Glass panel utility ─────────────────────────────────── */
