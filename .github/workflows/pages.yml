@@ -34,6 +34,7 @@ jobs:
         env:
           BASE_PATH: /joyedmctier/
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          PORT: 3000
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
