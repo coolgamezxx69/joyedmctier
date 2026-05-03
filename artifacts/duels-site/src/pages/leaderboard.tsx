@@ -377,18 +377,10 @@ function ServerPage() {
               </div>
             </div>
           </div>
-          <div className="glass-card rounded-xl px-4 py-4">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-3">Quick Tips</p>
-            <div className="space-y-2 text-xs text-muted-foreground">
-              <div className="flex items-start gap-2"><span className="text-sky-400 font-bold">→</span><span>Play <span className="text-foreground/80 font-medium">10 matches</span> in any ranked mode to appear on the leaderboard.</span></div>
-              <div className="flex items-start gap-2"><span className="text-sky-400 font-bold">→</span><span>Use <span className="font-mono text-foreground/80">/rank</span> in-game to see your MMR and tier across all modes.</span></div>
-              <div className="flex items-start gap-2"><span className="text-sky-400 font-bold">→</span><span>Duels support FT1–FT15 formats — MMR applies after the series winner reaches their target.</span></div>
-              <div className="flex items-start gap-2"><span className="text-sky-400 font-bold">→</span><span>LT2+ ranks decay if you go inactive for 3+ days, so keep playing!</span></div>
-            </div>
-          </div>
+
         </div>
         <div className="mt-2 px-5 sm:px-8 pb-6 text-center text-xs text-muted-foreground">
-          Hosted on Minehut · JoyedTiers PvP Network
+          JoyedMC
         </div>
       </div>
     </div>
