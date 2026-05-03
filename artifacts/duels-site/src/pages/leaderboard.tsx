@@ -380,7 +380,7 @@ function ServerPage() {
 
         </div>
         <div className="mt-2 px-5 sm:px-8 pb-6 text-center text-xs text-muted-foreground">
-          JoyedMC
+          JoyedMC Servers.
         </div>
       </div>
     </div>
@@ -437,12 +437,12 @@ export default function LeaderboardPage() {
     <div className="relative min-h-screen bg-background">
       <div className="bg-orbs" aria-hidden><div className="bg-orb-3" /></div>
 
-      <header className={`glass-header sticky top-0 z-20 transition-all duration-400 ${scrolled ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-        <div className="max-w-6xl mx-auto px-5 py-2.5 flex items-center justify-between gap-4">
+      <header className="glass-header sticky top-0 z-20">
+        <div className="max-w-6xl mx-auto px-5 py-3.5 flex items-center justify-between gap-4">
           {/* Logo */}
           <div className="flex items-center gap-2.5 flex-shrink-0">
-            <img src={logoUrl} alt="JoyedTiers" className="h-7 w-auto object-contain" style={{ imageRendering: "pixelated" }} />
-            <span className="font-black text-base tracking-tight bg-gradient-to-r from-sky-300 to-white bg-clip-text text-transparent">JoyedTiers</span>
+            <img src={logoUrl} alt="JoyedTiers" className="h-9 w-auto object-contain" style={{ imageRendering: "pixelated" }} />
+            <span className="font-black text-lg tracking-tight bg-gradient-to-r from-sky-300 to-white bg-clip-text text-transparent">JoyedTiers</span>
           </div>
           {/* Desktop nav tabs — centre/right */}
           <nav className="hidden sm:flex items-center gap-1">
