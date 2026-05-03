@@ -308,7 +308,7 @@ export default function LeaderboardPage() {
           <h1 className="hero-title mt-6 sm:mt-8 px-4">JoyedTiers</h1>
           <p className="hero-subtitle mt-3 flex items-center justify-center gap-2 px-4">
             <Swords className="w-4 h-4 flex-shrink-0 opacity-70" />
-            Minecraft PvP Ranked Leaderboard
+            Minecraft PvP Ranked Leaderboard with live match data
           </p>
           {region && (
             <div className="mt-5">
@@ -325,6 +325,26 @@ export default function LeaderboardPage() {
           )}
         </div>
       </section>
+
+      <div className="relative z-10 max-w-6xl mx-auto px-3 sm:px-5 pb-8">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="glass rounded-3xl p-5 text-left">
+            <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Live data</p>
+            <p className="mt-3 text-2xl font-black text-foreground">Updated instantly</p>
+            <p className="mt-2 text-sm text-muted-foreground">Leaderboard values are pulled directly from your game database.</p>
+          </div>
+          <div className="glass rounded-3xl p-5 text-left">
+            <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Rank requirement</p>
+            <p className="mt-3 text-2xl font-black text-foreground">10 matches</p>
+            <p className="mt-2 text-sm text-muted-foreground">Players need 10 duel matches to appear on the leaderboard.</p>
+          </div>
+          <div className="glass rounded-3xl p-5 text-left">
+            <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Modes</p>
+            <p className="mt-3 text-2xl font-black text-foreground">8 tracked</p>
+            <p className="mt-2 text-sm text-muted-foreground">All major PvP modes are included in ranking calculations.</p>
+          </div>
+        </div>
+      </div>
 
       <main className="relative z-10 max-w-6xl mx-auto px-3 sm:px-5 pb-14">
         {/* ── Tab bar ── */}
