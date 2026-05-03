@@ -39,5 +39,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: artifacts/duels-site/dist/public
-          publish_branch: gh-pages
+          publish_branch: docs
           commit_message: "Deploy duels-site to GitHub Pages"
