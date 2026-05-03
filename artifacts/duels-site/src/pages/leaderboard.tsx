@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useGetLeaderboard, getGetLeaderboardQueryKey, useGetOverviewLeaderboard, getGetOverviewLeaderboardQueryKey } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MODES, TIER_COLORS, TIER_BORDER_GLOW, EU_COUNTRIES, type ModeKey } from "@/lib/tiers";
-import { Trophy, Crown, Swords, Star, Zap, Server, Shield, Menu, Copy, Check, Sword, FlaskConical, Gem, Axe, Sparkles, Hammer, Target } from "lucide-react";
+import { Trophy, Crown, Swords, Star, Zap, Server, Shield, Menu, Copy, Check, Sword, FlaskConical, Gem, Axe, Sparkles, Hammer, Target, Search, X } from "lucide-react";
 import logoUrl from "@assets/joyedtier_1777740585038.png";
 
 type TabKey = ModeKey | "overview";
@@ -117,6 +117,48 @@ function LeaderboardSkeleton() {
   );
 }
 
+// ── Player Search ──────────────────────────────────────────────────────────────
+function PlayerSearch() {
+  const [query, setQuery] = useState("");
+  const [, navigate] = useLocation();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = query.trim();
+    if (trimmed) {
+      navigate(`/player/${trimmed}`);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSearch} className="relative w-full max-w-sm">
+      <div className="relative flex items-center">
+        <Search className="absolute left-3 w-4 h-4 text-muted-foreground pointer-events-none" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search player..."
+          className="w-full pl-9 pr-9 py-2 rounded-xl text-sm font-medium bg-white/7 border border-white/12 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-sky-400/40 focus:bg-white/10 transition-all"
+          style={{ backdropFilter: "blur(8px)" }}
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => { setQuery(""); inputRef.current?.focus(); }}
+            className="absolute right-2.5 p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+    </form>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function ModeLeaderboard({ mode }: { mode: ModeKey }) {
   const { data, isLoading, isError } = useGetLeaderboard(mode, undefined, {
     query: { queryKey: getGetLeaderboardQueryKey(mode) },
@@ -227,16 +269,20 @@ function LeaderboardSection() {
       </div>
       <div className="glass-wrap">
         <div className="glass rounded-[1.1rem] overflow-hidden">
-          <div className="px-5 sm:px-8 py-5 sm:py-6 flex items-center justify-between" style={{ background: "linear-gradient(to bottom, rgba(255,255,255,.05), rgba(255,255,255,.01))" }}>
+          <div className="px-5 sm:px-8 py-5 sm:py-6 flex items-center justify-between gap-3 flex-wrap" style={{ background: "linear-gradient(to bottom, rgba(255,255,255,.05), rgba(255,255,255,.01))" }}>
             <div>
               <h2 className="text-lg sm:text-xl font-black text-foreground tracking-tight flex items-center gap-2.5">
                 {activeTab === "overview" ? <><Trophy className="w-5 h-5 text-sky-400" />Overall Rankings</> : <><ModeIcon mode={activeTab} className="w-5 h-5 text-sky-400" />{activeMode?.label ?? activeTab} Rankings</>}
               </h2>
               <p className="text-xs text-muted-foreground mt-1">{activeTab === "overview" ? "Ranked by total points across all modes" : "Sorted by MMR — top 50 players"}</p>
             </div>
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: "rgba(56,189,248,.08)", border: "1px solid rgba(56,189,248,.15)" }}>
-              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
-              <span className="text-[11px] font-mono font-semibold text-sky-400 tracking-wide">LIVE</span>
+            <div className="flex items-center gap-3">
+              {/* ── Player search bar ── */}
+              <PlayerSearch />
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl flex-shrink-0" style={{ background: "rgba(56,189,248,.08)", border: "1px solid rgba(56,189,248,.15)" }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+                <span className="text-[11px] font-mono font-semibold text-sky-400 tracking-wide">LIVE</span>
+              </div>
             </div>
           </div>
           <div className="glass-rainbow-line" />
@@ -377,7 +423,6 @@ function ServerPage() {
               </div>
             </div>
           </div>
-
         </div>
         <div className="mt-2 px-5 sm:px-8 pb-6 text-center text-xs text-muted-foreground">
           JoyedMC Servers.
@@ -444,7 +489,7 @@ export default function LeaderboardPage() {
             <img src={logoUrl} alt="JoyedTiers" className="h-9 w-auto object-contain" style={{ imageRendering: "pixelated" }} />
             <span className="font-black text-lg tracking-tight bg-gradient-to-r from-sky-300 to-white bg-clip-text text-transparent">JoyedTiers</span>
           </div>
-          {/* Desktop nav tabs — centre/right */}
+          {/* Desktop nav tabs */}
           <nav className="hidden sm:flex items-center gap-1">
             {PAGE_TABS.map((tab) => (
               <button
