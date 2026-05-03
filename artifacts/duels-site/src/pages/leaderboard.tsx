@@ -385,6 +385,9 @@ export default function LeaderboardPage() {
               : <ModeLeaderboard mode={activeTab as ModeKey} />
             }
           </div>
+          <div className="mt-4 px-5 sm:px-8 pb-6 text-center text-sm text-muted-foreground">
+            10 duel matches are required to be ranked and appear on the leaderboard.
+          </div>
         </div>
       </main>
     </div>
