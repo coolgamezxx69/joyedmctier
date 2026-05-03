@@ -1,0 +1,23 @@
+modules = ["nodejs-20"]
+
+[nix]
+channel = "stable-24_05"
+
+[workflows]
+runButton = "run"
+
+[[workflows.workflow.pane]]
+title = "API Server"
+program = "bash"
+shortcut = "ctrl-shift-a"
+
+[workflows.workflow.pane.launch]
+args = ["bash", "-c", "cd /workspaces/joyedmctier && PORT=3000 pnpm --dir artifacts/api-server run dev"]
+
+[[workflows.workflow.pane]]
+title = "Frontend"
+program = "bash"
+shortcut = "ctrl-shift-f"
+
+[workflows.workflow.pane.launch]
+args = ["bash", "-c", "cd /workspaces/joyedmctier && BASE_PATH=/ PORT=5173 pnpm --dir artifacts/duels-site run dev"]
