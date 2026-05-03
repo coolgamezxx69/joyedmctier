@@ -63,13 +63,11 @@ export default defineConfig({
     strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
-    fs: {
-      strict: true,
-    },
+    proxy: {
+  "/api": {
+    target: "http://127.0.0.1:3000",
+    changeOrigin: true,
   },
-  preview: {
-    port,
-    host: "0.0.0.0",
-    allowedHosts: true,
-  },
+},
+},
 });

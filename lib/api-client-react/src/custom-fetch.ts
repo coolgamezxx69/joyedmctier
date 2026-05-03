@@ -18,6 +18,11 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
 
+// Auto-configure base URL from build-time env var (set by Vite)
+if (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_API_URL) {
+  _baseUrl = ((import.meta as any).env.VITE_API_URL as string).replace(/\/+$/, "");
+}
+
 /**
  * Set a base URL that is prepended to every relative request URL
  * (i.e. paths that start with `/`).

@@ -33,6 +33,7 @@ jobs:
         run: pnpm --dir artifacts/duels-site build
         env:
           BASE_PATH: /joyedmctier/
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
