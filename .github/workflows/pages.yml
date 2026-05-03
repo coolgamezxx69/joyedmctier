@@ -29,7 +29,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build duels-site
+- name: Build duels-site
         run: pnpm --dir artifacts/duels-site build
         env:
           BASE_PATH: /joyedmctier/
