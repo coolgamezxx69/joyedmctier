@@ -3,11 +3,11 @@ import { Link, useLocation } from "wouter";
 import { useGetLeaderboard, getGetLeaderboardQueryKey, useGetOverviewLeaderboard, getGetOverviewLeaderboardQueryKey } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MODES, TIER_COLORS, TIER_BORDER_GLOW, EU_COUNTRIES, type ModeKey } from "@/lib/tiers";
-import { Trophy, Crown, Swords, Star, Zap, Server, Shield, Menu, Copy, Check, Sword, FlaskConical, Gem, Axe, Sparkles, Hammer, Target, Search, X } from "lucide-react";
+import { Trophy, Crown, Swords, Star, Zap, Server, Shield, Menu, Copy, Check, Sword, FlaskConical, Gem, Axe, Sparkles, Hammer, Target, Search, X, MessageCircle, Info, FileText } from "lucide-react";
 import logoUrl from "@assets/joyedtier_1777740585038.png";
 
 type TabKey = ModeKey | "overview";
-type PageKey = "leaderboard" | "ranks" | "server";
+type PageKey = "leaderboard" | "ranks" | "server" | "contact" | "about" | "privacy";
 
 function ModeIcon({ mode, className = "w-3.5 h-3.5" }: { mode: string; className?: string }) {
   switch (mode) {
@@ -117,7 +117,6 @@ function LeaderboardSkeleton() {
   );
 }
 
-// ── Player Search ──────────────────────────────────────────────────────────────
 function PlayerSearch() {
   const [query, setQuery] = useState("");
   const [, navigate] = useLocation();
@@ -126,9 +125,7 @@ function PlayerSearch() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = query.trim();
-    if (trimmed) {
-      navigate(`/player/${trimmed}`);
-    }
+    if (trimmed) navigate(`/player/${trimmed}`);
   };
 
   return (
@@ -145,11 +142,7 @@ function PlayerSearch() {
           style={{ backdropFilter: "blur(8px)" }}
         />
         {query && (
-          <button
-            type="button"
-            onClick={() => { setQuery(""); inputRef.current?.focus(); }}
-            className="absolute right-2.5 p-0.5 text-muted-foreground hover:text-foreground transition-colors"
-          >
+          <button type="button" onClick={() => { setQuery(""); inputRef.current?.focus(); }} className="absolute right-2.5 p-0.5 text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-3.5 h-3.5" />
           </button>
         )}
@@ -157,7 +150,6 @@ function PlayerSearch() {
     </form>
   );
 }
-// ─────────────────────────────────────────────────────────────────────────────
 
 function ModeLeaderboard({ mode }: { mode: ModeKey }) {
   const { data, isLoading, isError } = useGetLeaderboard(mode, undefined, {
@@ -277,7 +269,6 @@ function LeaderboardSection() {
               <p className="text-xs text-muted-foreground mt-1">{activeTab === "overview" ? "Ranked by total points across all modes" : "Sorted by MMR — top 50 players"}</p>
             </div>
             <div className="flex items-center gap-3">
-              {/* ── Player search bar ── */}
               <PlayerSearch />
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl flex-shrink-0" style={{ background: "rgba(56,189,248,.08)", border: "1px solid rgba(56,189,248,.15)" }}>
                 <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
@@ -432,10 +423,150 @@ function ServerPage() {
   );
 }
 
+function ContactPage() {
+  return (
+    <div className="glass-wrap">
+      <div className="glass rounded-[1.1rem] overflow-hidden">
+        <div className="px-5 sm:px-8 py-5 sm:py-6 flex items-center gap-3" style={{ background: "linear-gradient(to bottom, rgba(255,255,255,.05), rgba(255,255,255,.01))" }}>
+          <MessageCircle className="w-5 h-5 text-sky-400 flex-shrink-0" />
+          <div>
+            <h2 className="text-lg sm:text-xl font-black text-foreground tracking-tight">Contact Us</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Get in touch with the JoyedTiers team</p>
+          </div>
+        </div>
+        <div className="glass-rainbow-line" />
+        <div className="px-3 sm:px-5 py-6 space-y-4">
+          <div className="glass-card rounded-xl px-5 py-5 flex flex-col items-center text-center gap-4">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "rgba(88,101,242,.2)", border: "1px solid rgba(88,101,242,.35)" }}>
+              <MessageCircle className="w-7 h-7 text-indigo-400" />
+            </div>
+            <div>
+              <p className="font-bold text-foreground text-base">Join our Discord</p>
+              <p className="text-xs text-muted-foreground mt-1">The fastest way to reach us. Ask questions, report issues, or just hang out with the community.</p>
+            </div>
+            <a
+              href="https://discord.gg/2mDqh8YhzZ"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all hover:opacity-90"
+              style={{ background: "linear-gradient(135deg, rgba(88,101,242,.5) 0%, rgba(88,101,242,.3) 100%)", border: "1px solid rgba(88,101,242,.5)", color: "#a5b4fc" }}
+            >
+              <MessageCircle className="w-4 h-4" />
+              Join Discord Server
+            </a>
+          </div>
+          <div className="glass-card rounded-xl px-5 py-4 space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">What you can reach us for</p>
+            <div className="space-y-2 text-xs text-muted-foreground">
+              <div className="flex items-start gap-2"><span className="text-sky-400 font-bold mt-0.5">→</span><span>Reporting bugs or incorrect stats</span></div>
+              <div className="flex items-start gap-2"><span className="text-sky-400 font-bold mt-0.5">→</span><span>Questions about your rank or MMR</span></div>
+              <div className="flex items-start gap-2"><span className="text-sky-400 font-bold mt-0.5">→</span><span>Appeals or disputes</span></div>
+              <div className="flex items-start gap-2"><span className="text-sky-400 font-bold mt-0.5">→</span><span>General feedback or suggestions</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AboutPage() {
+  return (
+    <div className="glass-wrap">
+      <div className="glass rounded-[1.1rem] overflow-hidden">
+        <div className="px-5 sm:px-8 py-5 sm:py-6 flex items-center gap-3" style={{ background: "linear-gradient(to bottom, rgba(255,255,255,.05), rgba(255,255,255,.01))" }}>
+          <Info className="w-5 h-5 text-sky-400 flex-shrink-0" />
+          <div>
+            <h2 className="text-lg sm:text-xl font-black text-foreground tracking-tight">About JoyedTiers</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">What we're about</p>
+          </div>
+        </div>
+        <div className="glass-rainbow-line" />
+        <div className="px-5 sm:px-8 py-6 space-y-5 text-sm text-muted-foreground leading-relaxed">
+          <p className="text-foreground font-semibold text-base">The home of competitive Minecraft PvP ranking.</p>
+          <p>JoyedTiers is a ranked leaderboard platform built for the JoyedMC Minecraft server. We track player performance across multiple combat modes — from Sword and Axe to Crystal and Mace — using a live MMR system to give every player a fair and accurate rank.</p>
+          <p>Our goal is simple: give competitive Minecraft PvP players a place to prove their skill, track their progress, and compete for the top spot in their favourite mode.</p>
+          <div className="glass-card rounded-xl px-4 py-4 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">What we offer</p>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-start gap-2"><span className="text-sky-400 font-bold mt-0.5">→</span><span>Live leaderboards updated in real time</span></div>
+              <div className="flex items-start gap-2"><span className="text-sky-400 font-bold mt-0.5">→</span><span>Individual player profiles with per-mode stats</span></div>
+              <div className="flex items-start gap-2"><span className="text-sky-400 font-bold mt-0.5">→</span><span>Elo-based MMR system with placement matches</span></div>
+              <div className="flex items-start gap-2"><span className="text-sky-400 font-bold mt-0.5">→</span><span>10 ranked modes including Sword, Axe, Crystal, Mace, UHC and more</span></div>
+              <div className="flex items-start gap-2"><span className="text-sky-400 font-bold mt-0.5">→</span><span>HT1 throne system — one player per mode holds the crown</span></div>
+            </div>
+          </div>
+          <p>JoyedTiers is community-driven and constantly improving. Join our Discord to be part of it.</p>
+          <a
+            href="https://discord.gg/2mDqh8YhzZ"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl font-semibold text-xs transition-all hover:opacity-90"
+            style={{ background: "rgba(88,101,242,.2)", border: "1px solid rgba(88,101,242,.35)", color: "#a5b4fc" }}
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            Join the Discord
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PrivacyPage() {
+  return (
+    <div className="glass-wrap">
+      <div className="glass rounded-[1.1rem] overflow-hidden">
+        <div className="px-5 sm:px-8 py-5 sm:py-6 flex items-center gap-3" style={{ background: "linear-gradient(to bottom, rgba(255,255,255,.05), rgba(255,255,255,.01))" }}>
+          <FileText className="w-5 h-5 text-sky-400 flex-shrink-0" />
+          <div>
+            <h2 className="text-lg sm:text-xl font-black text-foreground tracking-tight">Privacy Policy</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Last updated: May 2025</p>
+          </div>
+        </div>
+        <div className="glass-rainbow-line" />
+        <div className="px-5 sm:px-8 py-6 space-y-6 text-sm text-muted-foreground leading-relaxed">
+          <div className="space-y-2">
+            <p className="text-foreground font-semibold">1. Information We Collect</p>
+            <p>JoyedTiers displays publicly available Minecraft player data including usernames, UUIDs, and in-game statistics (MMR, wins, losses, rank). This data is collected from gameplay on the JoyedMC server. We do not collect any personal information such as email addresses, passwords, or payment details.</p>
+          </div>
+          <div className="space-y-2">
+            <p className="text-foreground font-semibold">2. How We Use Your Data</p>
+            <p>Player data is used solely to display leaderboard rankings and individual player profiles on joyedtiers.com. We do not sell, trade, or share this data with third parties for marketing purposes.</p>
+          </div>
+          <div className="space-y-2">
+            <p className="text-foreground font-semibold">3. Cookies & Analytics</p>
+            <p>This site may use cookies and third-party services such as Google AdSense for advertising purposes. These services may collect anonymised usage data in accordance with their own privacy policies. You can opt out of personalised ads via Google's ad settings.</p>
+          </div>
+          <div className="space-y-2">
+            <p className="text-foreground font-semibold">4. Third-Party Services</p>
+            <p>We use Minotar to display Minecraft player avatars. Player skin images are fetched directly from their servers using publicly available Minecraft usernames. We are not responsible for third-party services' data practices.</p>
+          </div>
+          <div className="space-y-2">
+            <p className="text-foreground font-semibold">5. Data Removal</p>
+            <p>If you would like your player data removed from JoyedTiers, please contact us via our Discord server and we will process your request.</p>
+          </div>
+          <div className="space-y-2">
+            <p className="text-foreground font-semibold">6. Changes to This Policy</p>
+            <p>We may update this policy from time to time. Continued use of the site after changes constitutes acceptance of the updated policy.</p>
+          </div>
+          <div className="space-y-2">
+            <p className="text-foreground font-semibold">7. Contact</p>
+            <p>For any privacy-related questions, reach us via our <a href="https://discord.gg/2mDqh8YhzZ" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">Discord server</a>.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const PAGE_TABS: { key: PageKey; label: string; icon: React.ReactNode }[] = [
   { key: "leaderboard", label: "Leaderboard", icon: <Trophy className="w-4 h-4" /> },
   { key: "ranks",       label: "Ranks",       icon: <Shield className="w-4 h-4" /> },
   { key: "server",      label: "Server Info",  icon: <Server className="w-4 h-4" /> },
+  { key: "about",       label: "About",        icon: <Info className="w-4 h-4" /> },
+  { key: "contact",     label: "Contact",      icon: <MessageCircle className="w-4 h-4" /> },
+  { key: "privacy",     label: "Privacy",      icon: <FileText className="w-4 h-4" /> },
 ];
 
 function MobileSidebar({ open, onClose, activePage, setActivePage }: { open: boolean; onClose: () => void; activePage: PageKey; setActivePage: (p: PageKey) => void }) {
@@ -484,12 +615,10 @@ export default function LeaderboardPage() {
 
       <header className="glass-header sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-5 py-3.5 flex items-center justify-between gap-4">
-          {/* Logo */}
           <div className="flex items-center gap-2.5 flex-shrink-0">
             <img src={logoUrl} alt="JoyedTiers" className="h-9 w-auto object-contain" style={{ imageRendering: "pixelated" }} />
             <span className="font-black text-lg tracking-tight bg-gradient-to-r from-sky-300 to-white bg-clip-text text-transparent">JoyedTiers</span>
           </div>
-          {/* Desktop nav tabs */}
           <nav className="hidden sm:flex items-center gap-1">
             {PAGE_TABS.map((tab) => (
               <button
@@ -501,7 +630,6 @@ export default function LeaderboardPage() {
               </button>
             ))}
           </nav>
-          {/* Region badge */}
           {region && <span className={`flex-shrink-0 text-[10px] font-bold font-mono px-2.5 py-1 rounded-full border tracking-widest uppercase ${region === "EU" ? "bg-blue-500/12 text-blue-300 border-blue-400/25" : "bg-sky-500/12 text-sky-300 border-sky-400/25"}`}>{region}</span>}
         </div>
       </header>
@@ -533,9 +661,11 @@ export default function LeaderboardPage() {
         {activePage === "leaderboard" && <LeaderboardSection />}
         {activePage === "ranks"       && <RanksPage />}
         {activePage === "server"      && <ServerPage />}
+        {activePage === "contact"     && <ContactPage />}
+        {activePage === "about"       && <AboutPage />}
+        {activePage === "privacy"     && <PrivacyPage />}
       </main>
 
-      {/* Mobile floating button */}
       <div className="fixed bottom-6 right-5 z-30 sm:hidden">
         <button
           onClick={() => setSidebarOpen(true)}
