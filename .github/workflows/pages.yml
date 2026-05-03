@@ -32,7 +32,7 @@ jobs:
       - name: Build duels-site
         run: pnpm --dir artifacts/duels-site build
         env:
-          BASE_PATH: /joyedmctier/
+          BASE_PATH: /
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           PORT: 3000
 
