@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MODES, TIER_COLORS, TIER_BORDER_GLOW, EU_COUNTRIES, type ModeKey } from "@/lib/tiers";
 import { Trophy, Crown, Swords, Star, Zap, Server, Shield, Menu, Copy, Check, Sword, FlaskConical, Gem, Axe, Sparkles, Hammer, Target, Search, X, MessageCircle, Info, FileText } from "lucide-react";
 import logoUrl from "@assets/JTlogo.png";
-import heroLogoUrl from "@assets/JTlogo.png";
+import heroLogoUrl from "@assets/a.png";
 
 type TabKey = ModeKey | "overview";
 type PageKey = "leaderboard" | "ranks" | "server" | "contact" | "about" | "privacy";
