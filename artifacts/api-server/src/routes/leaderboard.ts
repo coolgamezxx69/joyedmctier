@@ -54,7 +54,7 @@ router.get("/leaderboard/overview", async (req, res) => {
        FROM players p
        JOIN player_stats ps ON p.uuid = ps.uuid
        LEFT JOIN ht1_holders h ON h.mode = ps.mode AND h.uuid = ps.uuid
-       WHERE ps.fights >= 10`
+       WHERE ps.fights >= 10 AND ps.mmr >= 500`
     );
 
     const playerMap = new Map<string, {
@@ -132,7 +132,7 @@ router.get("/leaderboard/:mode", async (req, res) => {
               COALESCE(ps.fights, 0) AS fights
        FROM players p
        JOIN player_stats ps ON p.uuid = ps.uuid
-       WHERE ps.mode = ? AND ps.fights >= 10
+       WHERE ps.mode = ? AND ps.fights >= 10 AND ps.mmr >= 500
        ORDER BY ps.mmr DESC
        LIMIT ?`,
       [mode, limit]
