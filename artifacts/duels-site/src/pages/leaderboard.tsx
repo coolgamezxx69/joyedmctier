@@ -4,11 +4,11 @@ import { useGetLeaderboard, getGetLeaderboardQueryKey, useGetOverviewLeaderboard
 import { Skeleton } from "@/components/ui/skeleton";
 import { MODES, TIER_COLORS, TIER_BORDER_GLOW, EU_COUNTRIES, type ModeKey } from "@/lib/tiers";
 import { Trophy, Crown, Swords, Star, Zap, Server, Shield, Menu, Copy, Check, Sword, FlaskConical, Gem, Axe, Sparkles, Hammer, Target, Search, X, MessageCircle, Info, FileText } from "lucide-react";
-import logoUrl from "@assets/joyedtier_1777740585038.png";
-
+import logoUrl from "attached_assets/a.png";
+ 
 type TabKey = ModeKey | "overview";
 type PageKey = "leaderboard" | "ranks" | "server" | "contact" | "about" | "privacy";
-
+ 
 function ModeIcon({ mode, className = "w-3.5 h-3.5" }: { mode: string; className?: string }) {
   switch (mode) {
     case "sword":    return <Sword className={className} />;
@@ -22,7 +22,7 @@ function ModeIcon({ mode, className = "w-3.5 h-3.5" }: { mode: string; className
     default:         return <Star className={className} />;
   }
 }
-
+ 
 const TIERS = [
   { key: "HT1", name: "High Tier 1", mmr: "3700+ (dethrone current HT1)", how: "Defeat the current HT1 holder in a duel. Only one player can hold this throne per mode.", special: true },
   { key: "LT1", name: "Low Tier 1",  mmr: "3300 – 3699", how: "Reach 3300+ MMR in any ranked mode." },
@@ -35,7 +35,7 @@ const TIERS = [
   { key: "HT5", name: "High Tier 5", mmr: "500 – 899",   how: "Reach 500+ MMR in any ranked mode." },
   { key: "LT5", name: "Low Tier 5",  mmr: "0 – 499",     how: "Complete 10 placement matches in any ranked mode." },
 ];
-
+ 
 function TierBadge({ tier }: { tier: string }) {
   const cls = TIER_COLORS[tier] ?? TIER_COLORS["Unranked"];
   return (
@@ -45,7 +45,7 @@ function TierBadge({ tier }: { tier: string }) {
     </span>
   );
 }
-
+ 
 function PlayerHead({ username, rank }: { uuid: string; username: string; rank?: number }) {
   const [errored, setErrored] = useState(false);
   const ringStyle =
@@ -65,7 +65,7 @@ function PlayerHead({ username, rank }: { uuid: string; username: string; rank?:
     </div>
   );
 }
-
+ 
 function RegionBadge({ region }: { region?: string | null }) {
   if (!region) return null;
   const label = region === "EU" ? "EU" : "US";
@@ -76,7 +76,7 @@ function RegionBadge({ region }: { region?: string | null }) {
     }`}>{label}</span>
   );
 }
-
+ 
 function WinLoss({ wins, losses }: { wins: number; losses: number }) {
   return (
     <div className="flex items-center justify-end gap-1 font-mono text-xs">
@@ -86,18 +86,18 @@ function WinLoss({ wins, losses }: { wins: number; losses: number }) {
     </div>
   );
 }
-
+ 
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) return <span className="rank-1 inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl text-base sm:text-lg font-black font-mono flex-shrink-0">1</span>;
   if (rank === 2) return <span className="rank-2 inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-sm font-black font-mono flex-shrink-0">2</span>;
   if (rank === 3) return <span className="rank-3 inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-sm font-black font-mono flex-shrink-0">3</span>;
   return <span className="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-sm font-bold font-mono text-muted-foreground/60 flex-shrink-0">{rank}</span>;
 }
-
+ 
 function ColHeader({ children, right }: { children: React.ReactNode; right?: boolean }) {
   return <div className={`text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 ${right ? "text-right" : ""}`}>{children}</div>;
 }
-
+ 
 function LeaderboardSkeleton() {
   return (
     <div className="p-3 sm:p-4 space-y-2">
@@ -116,18 +116,18 @@ function LeaderboardSkeleton() {
     </div>
   );
 }
-
+ 
 function PlayerSearch() {
   const [query, setQuery] = useState("");
   const [, navigate] = useLocation();
   const inputRef = useRef<HTMLInputElement>(null);
-
+ 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = query.trim();
     if (trimmed) navigate(`/player/${trimmed}`);
   };
-
+ 
   return (
     <form onSubmit={handleSearch} className="relative w-full max-w-sm">
       <div className="relative flex items-center">
@@ -150,7 +150,7 @@ function PlayerSearch() {
     </form>
   );
 }
-
+ 
 function ModeLeaderboard({ mode }: { mode: ModeKey }) {
   const { data, isLoading, isError } = useGetLeaderboard(mode, undefined, {
     query: { queryKey: getGetLeaderboardQueryKey(mode) },
@@ -199,7 +199,7 @@ function ModeLeaderboard({ mode }: { mode: ModeKey }) {
     </div>
   );
 }
-
+ 
 function OverviewLeaderboard() {
   const { data, isLoading, isError } = useGetOverviewLeaderboard(undefined, {
     query: { queryKey: getGetOverviewLeaderboardQueryKey() },
@@ -241,7 +241,7 @@ function OverviewLeaderboard() {
     </div>
   );
 }
-
+ 
 function LeaderboardSection() {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const activeMode = MODES.find((m) => m.key === activeTab);
@@ -286,7 +286,7 @@ function LeaderboardSection() {
     </>
   );
 }
-
+ 
 function RanksPage() {
   return (
     <div className="glass-wrap">
@@ -348,7 +348,7 @@ function RanksPage() {
     </div>
   );
 }
-
+ 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -360,7 +360,7 @@ function CopyButton({ text }: { text: string }) {
     </button>
   );
 }
-
+ 
 function ServerPage() {
   return (
     <div className="glass-wrap">
@@ -422,7 +422,7 @@ function ServerPage() {
     </div>
   );
 }
-
+ 
 function ContactPage() {
   return (
     <div className="glass-wrap">
@@ -469,7 +469,7 @@ function ContactPage() {
     </div>
   );
 }
-
+ 
 function AboutPage() {
   return (
     <div className="glass-wrap">
@@ -496,7 +496,7 @@ function AboutPage() {
               <div className="flex items-start gap-2"><span className="text-sky-400 font-bold mt-0.5">→</span><span>HT1 throne system — one player per mode holds the crown</span></div>
             </div>
           </div>
-          <p>JoyedTiers is community-driven and constantly improving. Join our Discord to be part of it.</p>
+          <p>JoyedTiers is a fun project and is constantly improving. Join our Discord to be part of it.</p>
           <a
             href="https://discord.gg/2mDqh8YhzZ"
             target="_blank"
@@ -512,7 +512,7 @@ function AboutPage() {
     </div>
   );
 }
-
+ 
 function PrivacyPage() {
   return (
     <div className="glass-wrap">
@@ -559,7 +559,7 @@ function PrivacyPage() {
     </div>
   );
 }
-
+ 
 const PAGE_TABS: { key: PageKey; label: string; icon: React.ReactNode }[] = [
   { key: "leaderboard", label: "Leaderboard", icon: <Trophy className="w-4 h-4" /> },
   { key: "ranks",       label: "Ranks",       icon: <Shield className="w-4 h-4" /> },
@@ -568,7 +568,7 @@ const PAGE_TABS: { key: PageKey; label: string; icon: React.ReactNode }[] = [
   { key: "contact",     label: "Contact",      icon: <MessageCircle className="w-4 h-4" /> },
   { key: "privacy",     label: "Privacy",      icon: <FileText className="w-4 h-4" /> },
 ];
-
+ 
 function MobileSidebar({ open, onClose, activePage, setActivePage }: { open: boolean; onClose: () => void; activePage: PageKey; setActivePage: (p: PageKey) => void }) {
   return (
     <>
@@ -592,27 +592,28 @@ function MobileSidebar({ open, onClose, activePage, setActivePage }: { open: boo
     </>
   );
 }
-
+ 
 export default function LeaderboardPage() {
   const [activePage, setActivePage] = useState<PageKey>("leaderboard");
   const [region, setRegion] = useState<"US" | "EU" | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
+ 
   useEffect(() => {
     fetch("https://ipapi.co/json/").then((r) => r.json()).then((d: any) => setRegion(EU_COUNTRIES.has(d.country_code) ? "EU" : "US")).catch(() => setRegion("US"));
   }, []);
-
+ 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
+ 
   return (
     <div className="relative min-h-screen bg-background">
       <div className="bg-orbs" aria-hidden><div className="bg-orb-3" /></div>
-
+ 
+      {/* ── Header: logo + nav only, no region badge ── */}
       <header className="glass-header sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-5 py-3.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5 flex-shrink-0">
@@ -630,33 +631,31 @@ export default function LeaderboardPage() {
               </button>
             ))}
           </nav>
-          {region && <span className={`flex-shrink-0 text-[10px] font-bold font-mono px-2.5 py-1 rounded-full border tracking-widest uppercase ${region === "EU" ? "bg-blue-500/12 text-blue-300 border-blue-400/25" : "bg-sky-500/12 text-sky-300 border-sky-400/25"}`}>{region}</span>}
         </div>
       </header>
-
+ 
+      {/* ── Hero: big logo image above title, no region badge ── */}
       <section className="relative z-10 pt-12 pb-10 sm:pt-16 sm:pb-12 text-center overflow-hidden">
         <div className="hero-glow-ring" aria-hidden />
         <div className="relative">
           <div className="hero-logo-wrap mx-auto">
             <div className="hero-logo-halo" aria-hidden />
             <div className="hero-logo-halo-2" aria-hidden />
-            <img src={logoUrl} alt="JoyedTiers" className="hero-logo relative mx-auto" style={{ imageRendering: "pixelated" }} />
+            <img
+              src={logoUrl}
+              alt="JoyedTiers"
+              className="hero-logo relative mx-auto"
+              style={{ imageRendering: "pixelated", width: "280px", height: "auto" }}
+            />
           </div>
           <h1 className="hero-title mt-6 sm:mt-8 px-4">JoyedTiers</h1>
           <p className="hero-subtitle mt-3 flex items-center justify-center gap-2 px-4">
             <Swords className="w-4 h-4 flex-shrink-0 opacity-70" />
             Minecraft PvP Ranked Leaderboard
           </p>
-          {region && (
-            <div className="mt-5">
-              <span className={`inline-flex items-center gap-2 text-xs font-bold font-mono px-4 py-2 rounded-full border tracking-widest uppercase ${region === "EU" ? "bg-blue-500/10 text-blue-300 border-blue-400/28" : "bg-sky-500/10 text-sky-300 border-sky-400/28"}`} style={{ backdropFilter: "blur(16px)" }}>
-                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />{region} Region
-              </span>
-            </div>
-          )}
         </div>
       </section>
-
+ 
       <main className="relative z-10 max-w-6xl mx-auto px-3 sm:px-5 pb-28 sm:pb-14">
         {activePage === "leaderboard" && <LeaderboardSection />}
         {activePage === "ranks"       && <RanksPage />}
@@ -665,7 +664,7 @@ export default function LeaderboardPage() {
         {activePage === "about"       && <AboutPage />}
         {activePage === "privacy"     && <PrivacyPage />}
       </main>
-
+ 
       <div className="fixed bottom-6 right-5 z-30 sm:hidden">
         <button
           onClick={() => setSidebarOpen(true)}
@@ -676,8 +675,9 @@ export default function LeaderboardPage() {
           <span>{PAGE_TABS.find(t => t.key === activePage)?.label}</span>
         </button>
       </div>
-
+ 
       <MobileSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} activePage={activePage} setActivePage={setActivePage} />
     </div>
   );
 }
+ 
