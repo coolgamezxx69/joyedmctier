@@ -4,6 +4,8 @@ import pool from "../lib/mysql";
 const MODES = ["sword", "axe", "dpot", "nethpot", "smp", "crystal", "mace", "uhc"] as const;
 type Mode = (typeof MODES)[number];
 
+const MODE_ORDER = ["sword", "axe", "dpot", "nethpot", "smp", "crystal", "mace", "uhc"];
+
 function tierFromMMR(mmr: number): string {
   if (mmr < 500) return "LT5";
   if (mmr < 900) return "HT5";
@@ -59,6 +61,7 @@ router.get("/leaderboard/overview", async (req, res) => {
       uuid: string; username: string; region: string;
       totalMMR: number; totalPoints: number;
       rankedModes: number; totalWins: number; totalLosses: number;
+      modes: { mode: string; tier: string }[];
     }>();
 
     for (const r of rows as any[]) {
@@ -68,16 +71,18 @@ router.get("/leaderboard/overview", async (req, res) => {
           region: r.region ?? "US",
           totalMMR: 0, totalPoints: 0, rankedModes: 0,
           totalWins: 0, totalLosses: 0,
+          modes: [],
         });
       }
       const p = playerMap.get(r.uuid)!;
-      const mmr = Number(r.mmr ?? 1000);
+      const mmr = Number(r.mmr ?? 0);
       const tier = r.isHT1 ? "HT1" : tierFromMMR(mmr);
       p.totalMMR += mmr;
       p.totalPoints += pointsFromTier(tier);
       p.rankedModes += 1;
       p.totalWins += Number(r.wins ?? 0);
       p.totalLosses += Number(r.losses ?? 0);
+      p.modes.push({ mode: r.mode, tier });
     }
 
     const entries = [...playerMap.values()]
@@ -93,6 +98,7 @@ router.get("/leaderboard/overview", async (req, res) => {
         rankedModes: p.rankedModes,
         totalWins: p.totalWins,
         totalLosses: p.totalLosses,
+        modes: p.modes.sort((a, b) => MODE_ORDER.indexOf(a.mode) - MODE_ORDER.indexOf(b.mode)),
       }));
 
     res.json({ entries });
@@ -136,7 +142,7 @@ router.get("/leaderboard/:mode", async (req, res) => {
       const fights = Number(r.fights ?? 0);
       const wins = Number(r.wins ?? 0);
       const losses = Number(r.losses ?? 0);
-      const mmr = Number(r.mmr ?? 1000);
+      const mmr = Number(r.mmr ?? 0);
       const isHT1 = r.uuid === ht1uuid;
       const tier = isHT1 ? "HT1" : tierFromMMR(mmr);
       return {
