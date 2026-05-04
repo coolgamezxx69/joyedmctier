@@ -180,8 +180,10 @@ function ModeLeaderboard({ mode }: { mode: ModeKey }) {
                     <RegionBadge region={entry.region} />
                   </div>
                   <div className="flex items-center gap-1 mt-0.5">
-                    <ModeIcon mode={mode} className="w-2.5 h-2.5 text-muted-foreground/50" />
-                    <span className="text-[10px] text-muted-foreground/50 font-mono">{entry.tier}</span>
+                    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono ${TIER_COLORS[entry.tier] ?? TIER_COLORS["Unranked"]}`}>
+                      <ModeIcon mode={mode} className="w-2.5 h-2.5" />
+                      {entry.tier}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 sm:hidden">
                     <TierBadge tier={entry.tier} />
@@ -233,9 +235,9 @@ function OverviewLeaderboard() {
                   </div>
                   <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                     {(entry.modes ?? []).map((m: { mode: string; tier: string }) => (
-                      <span key={m.mode} className="inline-flex items-center gap-0.5">
-                        <ModeIcon mode={m.mode} className="w-2.5 h-2.5 text-muted-foreground/50" />
-                        <span className="text-[10px] text-muted-foreground/50 font-mono">{m.tier}</span>
+                      <span key={m.mode} className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono ${TIER_COLORS[m.tier] ?? TIER_COLORS["Unranked"]}`}>
+                        <ModeIcon mode={m.mode} className="w-2.5 h-2.5" />
+                        {m.tier}
                       </span>
                     ))}
                     {(!entry.modes || entry.modes.length === 0) && (
