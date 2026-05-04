@@ -4,7 +4,7 @@ import { useGetPlayer, getGetPlayerQueryKey } from "@workspace/api-client-react"
 import { Skeleton } from "@/components/ui/skeleton";
 import { MODES, TIER_COLORS, crafatarUrl, pointsFromTier } from "@/lib/tiers";
 import { ArrowLeft, Crown, Trophy, Swords } from "lucide-react";
-import logoUrl from "@assets/JTlogo.png";
+import logoUrl from "@assets/JTlogoNEW.png";
 
 function PlayerHead({ username, size = 80 }: { uuid: string; username: string; size?: number }) {
   const [errored, setErrored] = useState(false);
