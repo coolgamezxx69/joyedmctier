@@ -179,6 +179,10 @@ function ModeLeaderboard({ mode }: { mode: ModeKey }) {
                     {entry.isHT1 && <Crown className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />}
                     <RegionBadge region={entry.region} />
                   </div>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <ModeIcon mode={mode} className="w-2.5 h-2.5 text-muted-foreground/50" />
+                    <span className="text-[10px] text-muted-foreground/50 font-mono">{entry.tier}</span>
+                  </div>
                   <div className="flex items-center gap-2 mt-0.5 sm:hidden">
                     <TierBadge tier={entry.tier} />
                     <span className="font-mono text-xs text-sky-400 font-bold">{entry.points}pts</span>
@@ -227,7 +231,17 @@ function OverviewLeaderboard() {
                     <span className="font-bold text-foreground truncate text-sm sm:text-[15px]">{entry.username}</span>
                     <RegionBadge region={entry.region} />
                   </div>
-                  <span className="text-[11px] text-muted-foreground">{entry.rankedModes} mode{entry.rankedModes !== 1 ? "s" : ""} ranked</span>
+                  <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                    {(entry.modes ?? []).map((m: { mode: string; tier: string }) => (
+                      <span key={m.mode} className="inline-flex items-center gap-0.5">
+                        <ModeIcon mode={m.mode} className="w-2.5 h-2.5 text-muted-foreground/50" />
+                        <span className="text-[10px] text-muted-foreground/50 font-mono">{m.tier}</span>
+                      </span>
+                    ))}
+                    {(!entry.modes || entry.modes.length === 0) && (
+                      <span className="text-[10px] text-muted-foreground/40">{entry.rankedModes} mode{entry.rankedModes !== 1 ? "s" : ""} ranked</span>
+                    )}
+                  </div>
                 </div>
                 <div className="hidden sm:block text-right"><WinLoss wins={entry.totalWins} losses={entry.totalLosses} /></div>
                 <div className="text-right">
