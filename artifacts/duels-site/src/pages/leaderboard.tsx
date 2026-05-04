@@ -20,7 +20,6 @@ function ModeIcon({ mode, className = "w-3.5 h-3.5" }: { mode: string; className
     case "crystal":  return <Gem className={className} />;
     case "mace":     return <Hammer className={className} />;
     case "uhc":      return <Sparkles className={className} />;
-    default:         return <Star className={className} />;
   }
 }
 
