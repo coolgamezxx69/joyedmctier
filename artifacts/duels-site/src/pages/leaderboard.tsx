@@ -37,6 +37,20 @@ const TIERS = [
   { key: "LT5", name: "Low Tier 5",  mmr: "0 – 499",     how: "Complete 10 placement matches in any ranked mode." },
 ];
 
+const TIER_COLOR_STYLES: Record<string, { color: string; background: string; border: string }> = {
+  HT1: { color: "#fcd34d", background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.35)" },
+  LT1: { color: "#fde047", background: "rgba(234,179,8,0.15)",  border: "1px solid rgba(234,179,8,0.35)" },
+  HT2: { color: "#d8b4fe", background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.35)" },
+  LT2: { color: "#a5b4fc", background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.35)" },
+  HT3: { color: "#93c5fd", background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.35)" },
+  LT3: { color: "#67e8f9", background: "rgba(6,182,212,0.15)",  border: "1px solid rgba(6,182,212,0.35)" },
+  HT4: { color: "#6ee7b7", background: "rgba(5,150,105,0.15)",  border: "1px solid rgba(5,150,105,0.35)" },
+  LT4: { color: "#bef264", background: "rgba(101,163,13,0.15)", border: "1px solid rgba(101,163,13,0.35)" },
+  HT5: { color: "#fdba74", background: "rgba(234,88,12,0.15)",  border: "1px solid rgba(234,88,12,0.35)" },
+  LT5: { color: "#a1a1aa", background: "rgba(63,63,70,0.4)",    border: "1px solid rgba(82,82,91,0.4)" },
+  Unranked: { color: "#71717a", background: "rgba(39,39,42,0.4)", border: "1px solid rgba(63,63,70,0.4)" },
+};
+
 function TierBadge({ tier }: { tier: string }) {
   const cls = TIER_COLORS[tier] ?? TIER_COLORS["Unranked"];
   return (
@@ -180,7 +194,10 @@ function ModeLeaderboard({ mode }: { mode: ModeKey }) {
                     <RegionBadge region={entry.region} />
                   </div>
                   <div className="flex items-center gap-1 mt-0.5">
-                    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono ${TIER_COLORS[entry.tier] ?? TIER_COLORS["Unranked"]}`}>
+                    <span
+                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono"
+                      style={TIER_COLOR_STYLES[entry.tier] ?? TIER_COLOR_STYLES["Unranked"]}
+                    >
                       <ModeIcon mode={mode} className="w-2.5 h-2.5" />
                       {entry.tier}
                     </span>
@@ -235,7 +252,11 @@ function OverviewLeaderboard() {
                   </div>
                   <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                     {(entry.modes ?? []).map((m: { mode: string; tier: string }) => (
-                      <span key={m.mode} className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono ${TIER_COLORS[m.tier] ?? TIER_COLORS["Unranked"]}`}>
+                      <span
+                        key={m.mode}
+                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono"
+                        style={TIER_COLOR_STYLES[m.tier] ?? TIER_COLOR_STYLES["Unranked"]}
+                      >
                         <ModeIcon mode={m.mode} className="w-2.5 h-2.5" />
                         {m.tier}
                       </span>
@@ -661,8 +682,8 @@ export default function LeaderboardPage() {
             <img
               src={heroLogoUrl}
               alt="JoyedTiers"
-              className="hero-logo relative mx-auto"
-              style={{ imageRendering: "pixelated", width: "280px", height: "auto" }}
+              className="hero-logo relative mx-auto w-[560px] max-w-full"
+              style={{ imageRendering: "pixelated" }}
             />
           </div>
           <h1 className="hero-title mt-6 sm:mt-8 px-4">JoyedTiers</h1>
