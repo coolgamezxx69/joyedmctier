@@ -22,15 +22,30 @@
     <link rel="canonical" href="https://joyedtiers.com/" />
  
     <link rel="icon" type="image/png" href="/JTlogoNEW.png" />
+ 
+    <!-- GitHub Pages SPA routing: restore path after 404 redirect -->
+    <script>
+      (function() {
+        var redirect = sessionStorage.getItem('spa_redirect');
+        if (redirect) {
+          sessionStorage.removeItem('spa_redirect');
+          if (redirect !== window.location.pathname + window.location.search + window.location.hash) {
+            window.history.replaceState(null, '', redirect);
+          }
+        }
+      })();
+    </script>
+ 
+    <!-- MC Fonts: Press Start 2P for headings/UI labels, VT323 for readable body text -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
  
     <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2591604448977777"
       crossorigin="anonymous"></script>
-    <script type="module" crossorigin src="/assets/index-CqGYqbGi.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BEqUC94p.css">
+    <script type="module" crossorigin src="/assets/index-BWYYXqwP.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-qirm-BvT.css">
   </head>
   <body>
     <div id="root"></div>
