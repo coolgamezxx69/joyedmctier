@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* Fonts loaded via index.html */
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -98,9 +98,10 @@
   --chart-4: 271 91% 65%;
   --chart-5: 0 72% 51%;
 
-  --app-font-sans: 'Inter', system-ui, sans-serif;
-  --app-font-serif: Georgia, serif;
+  --app-font-sans: 'VT323', 'Courier New', monospace;
+  --app-font-serif: 'VT323', Georgia, serif;
   --app-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --app-font-mc: 'Press Start 2P', monospace;
   --radius: 0.75rem;
 
   --shadow-sm: 0 1px 3px rgba(0,0,0,.5);
@@ -125,7 +126,7 @@
 
 @layer base {
   * { @apply border-border; }
-  body { @apply font-sans antialiased bg-background text-foreground; }
+  body { @apply font-sans antialiased bg-background text-foreground; font-size: 18px; }
   html { color-scheme: dark; }
 }
 
@@ -575,4 +576,67 @@
   .border.active-elevate:not(.no-active-interaction-elevate)::after,
   .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
   .border.active-elevate-2:not(.no-active-interaction-elevate)::after { inset: -1px; }
+}
+
+/* ── Minecraft Font Overrides ──────────────────────────── */
+
+/* VT323 needs bigger base size to read well */
+body {
+  font-size: 18px;
+  letter-spacing: 0.01em;
+}
+
+/* Press Start 2P for the hero title */
+.hero-title {
+  font-family: 'Press Start 2P', monospace !important;
+  font-size: clamp(1.1rem, 4vw, 2.2rem) !important;
+  letter-spacing: 0.05em !important;
+  line-height: 1.3 !important;
+}
+
+.hero-subtitle {
+  font-family: 'VT323', monospace !important;
+  font-size: 1.3rem !important;
+  letter-spacing: 0.06em !important;
+}
+
+/* Press Start 2P for rank number badges (1, 2, 3) */
+.rank-1, .rank-2, .rank-3 {
+  font-family: 'Press Start 2P', monospace !important;
+  font-size: 0.55rem !important;
+}
+
+/* Utility class for MC headings */
+.font-mc {
+  font-family: 'Press Start 2P', monospace;
+}
+
+/* Navigation tab labels */
+.glass-tab-active,
+.glass-tabs button {
+  font-family: 'Press Start 2P', monospace !important;
+  font-size: 0.45rem !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* Section headings inside glass cards */
+.glass h2,
+.glass-wrap h2 {
+  font-family: 'Press Start 2P', monospace !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.06em !important;
+  line-height: 1.6 !important;
+}
+
+/* Player usernames in leaderboard rows */
+.glass-card .font-bold {
+  font-family: 'VT323', monospace !important;
+  font-size: 1.25rem !important;
+  letter-spacing: 0.04em;
+}
+
+/* Mobile nav bottom sheet header span */
+.glass-header span {
+  font-family: 'Press Start 2P', monospace !important;
+  font-size: 0.6rem !important;
 }
