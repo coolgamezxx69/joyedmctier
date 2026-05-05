@@ -6,10 +6,10 @@ import { MODES, TIER_COLORS, TIER_BORDER_GLOW, EU_COUNTRIES, type ModeKey } from
 import { Trophy, Crown, Swords, Star, Zap, Server, Shield, Menu, Copy, Check, Sword, FlaskConical, Gem, Axe, Sparkles, Hammer, Target, Search, X, MessageCircle, Info, FileText } from "lucide-react";
 import logoUrl from "@assets/JTlogoNEW.png";
 import heroLogoUrl from "@assets/a.png";
-
+ 
 type TabKey = ModeKey | "overview";
 type PageKey = "leaderboard" | "ranks" | "server" | "contact" | "about" | "privacy";
-
+ 
 function ModeIcon({ mode, className = "w-3.5 h-3.5" }: { mode: string; className?: string }) {
   switch (mode) {
     case "sword":    return <Sword className={className} />;
@@ -22,7 +22,7 @@ function ModeIcon({ mode, className = "w-3.5 h-3.5" }: { mode: string; className
     case "uhc":      return <Sparkles className={className} />;
   }
 }
-
+ 
 const TIERS = [
   { key: "HT1", name: "High Tier 1", mmr: "3700+ (dethrone current HT1)", how: "Defeat the current HT1 holder in a duel. Only one player can hold this throne per mode.", special: true },
   { key: "LT1", name: "Low Tier 1",  mmr: "3300 – 3699", how: "Reach 3300+ MMR in any ranked mode." },
@@ -35,7 +35,7 @@ const TIERS = [
   { key: "HT5", name: "High Tier 5", mmr: "500 – 899",   how: "Reach 500+ MMR in any ranked mode." },
   { key: "LT5", name: "Low Tier 5",  mmr: "0 – 499",     how: "Complete 10 placement matches in any ranked mode." },
 ];
-
+ 
 const TIER_COLOR_STYLES: Record<string, { color: string; background: string; border: string }> = {
   HT1: { color: "#fcd34d", background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.35)" },
   LT1: { color: "#fde047", background: "rgba(234,179,8,0.15)",  border: "1px solid rgba(234,179,8,0.35)" },
@@ -49,7 +49,7 @@ const TIER_COLOR_STYLES: Record<string, { color: string; background: string; bor
   LT5: { color: "#a1a1aa", background: "rgba(63,63,70,0.4)",    border: "1px solid rgba(82,82,91,0.4)" },
   Unranked: { color: "#71717a", background: "rgba(39,39,42,0.4)", border: "1px solid rgba(63,63,70,0.4)" },
 };
-
+ 
 function TierBadge({ tier }: { tier: string }) {
   const cls = TIER_COLORS[tier] ?? TIER_COLORS["Unranked"];
   return (
@@ -59,7 +59,7 @@ function TierBadge({ tier }: { tier: string }) {
     </span>
   );
 }
-
+ 
 function PlayerHead({ username, rank }: { uuid: string; username: string; rank?: number }) {
   const [errored, setErrored] = useState(false);
   const ringStyle =
@@ -79,7 +79,7 @@ function PlayerHead({ username, rank }: { uuid: string; username: string; rank?:
     </div>
   );
 }
-
+ 
 function RegionBadge({ region }: { region?: string | null }) {
   if (!region) return null;
   const label = region === "EU" ? "EU" : "US";
@@ -90,7 +90,7 @@ function RegionBadge({ region }: { region?: string | null }) {
     }`}>{label}</span>
   );
 }
-
+ 
 function WinLoss({ wins, losses }: { wins: number; losses: number }) {
   return (
     <div className="flex items-center justify-end gap-1 font-mono text-xs">
@@ -100,18 +100,18 @@ function WinLoss({ wins, losses }: { wins: number; losses: number }) {
     </div>
   );
 }
-
+ 
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) return <span className="rank-1 inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl text-base sm:text-lg font-black font-mono flex-shrink-0">1</span>;
   if (rank === 2) return <span className="rank-2 inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-sm font-black font-mono flex-shrink-0">2</span>;
   if (rank === 3) return <span className="rank-3 inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-sm font-black font-mono flex-shrink-0">3</span>;
   return <span className="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-sm font-bold font-mono text-muted-foreground/60 flex-shrink-0">{rank}</span>;
 }
-
+ 
 function ColHeader({ children, right }: { children: React.ReactNode; right?: boolean }) {
   return <div className={`text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 ${right ? "text-right" : ""}`}>{children}</div>;
 }
-
+ 
 function LeaderboardSkeleton() {
   return (
     <div className="p-3 sm:p-4 space-y-2">
@@ -130,18 +130,18 @@ function LeaderboardSkeleton() {
     </div>
   );
 }
-
+ 
 function PlayerSearch() {
   const [query, setQuery] = useState("");
   const [, navigate] = useLocation();
   const inputRef = useRef<HTMLInputElement>(null);
-
+ 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = query.trim();
     if (trimmed) navigate(`/player/${trimmed}`);
   };
-
+ 
   return (
     <form onSubmit={handleSearch} className="relative w-full max-w-sm">
       <div className="relative flex items-center">
@@ -164,11 +164,13 @@ function PlayerSearch() {
     </form>
   );
 }
-
+ 
 function ModeLeaderboard({ mode }: { mode: ModeKey }) {
   const { data, isLoading, isError } = useGetLeaderboard(mode, undefined, {
     query: { queryKey: getGetLeaderboardQueryKey(mode) },
   });
+  const [expandedUuid, setExpandedUuid] = useState<string | null>(null);
+ 
   if (isLoading) return <LeaderboardSkeleton />;
   if (isError || !data) return <div className="text-center py-24 text-muted-foreground"><p className="text-sm">Failed to load leaderboard.</p></div>;
   const entries = data.entries ?? [];
@@ -181,54 +183,75 @@ function ModeLeaderboard({ mode }: { mode: ModeKey }) {
       <div className="lb-scroll overflow-y-auto max-h-[370px] px-3 sm:px-4 pb-3 sm:pb-4 space-y-2">
         {entries.map((entry: any) => {
           const rankClass = entry.rank === 1 ? "row-rank-1" : entry.rank === 2 ? "row-rank-2" : entry.rank === 3 ? "row-rank-3" : "";
+          // FIX: if the server marks isHT1 true but tier shows LT1, override to HT1
+          const displayTier = entry.isHT1 ? "HT1" : entry.tier;
+          const isExpanded = expandedUuid === entry.uuid;
           return (
-            <Link key={entry.uuid} href={`/player/${entry.username}`}>
-              <div className={`glass-card rounded-2xl px-3 sm:px-4 py-3 sm:py-3.5 grid grid-cols-[36px_40px_1fr_auto] sm:grid-cols-[40px_44px_1fr_88px_96px_80px_84px] items-center gap-2 sm:gap-3 cursor-pointer ${entry.isHT1 ? "row-ht1" : ""} ${rankClass} ${TIER_BORDER_GLOW[entry.tier] ?? ""}`}>
-                <RankBadge rank={entry.rank} />
-                <PlayerHead uuid={entry.uuid} username={entry.username} rank={entry.rank} />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-bold text-foreground truncate text-sm sm:text-[15px]">{entry.username}</span>
-                    {entry.isHT1 && <Crown className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />}
-                    <RegionBadge region={entry.region} />
-                  </div>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <span
-                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono"
-                      style={TIER_COLOR_STYLES[entry.tier] ?? TIER_COLOR_STYLES["Unranked"]}
-                    >
-                      <ModeIcon mode={mode} className="w-2.5 h-2.5" />
-                      {entry.tier}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-0.5 sm:hidden">
-                    <div className="hidden sm:block">
-  <TierBadge tier={entry.tier} />
-</div>
+            <div
+              key={entry.uuid}
+              className={`glass-card rounded-2xl px-3 sm:px-4 py-3 sm:py-3.5 grid grid-cols-[36px_40px_1fr_auto] sm:grid-cols-[40px_44px_1fr_88px_96px_80px_84px] items-center gap-2 sm:gap-3 cursor-pointer ${entry.isHT1 ? "row-ht1" : ""} ${rankClass} ${TIER_BORDER_GLOW[displayTier] ?? ""}`}
+              onClick={() => {
+                // on mobile toggle expand; on desktop navigate
+                if (window.innerWidth < 640) {
+                  setExpandedUuid(isExpanded ? null : entry.uuid);
+                } else {
+                  window.location.href = `/player/${entry.username}`;
+                }
+              }}
+            >
+              <RankBadge rank={entry.rank} />
+              <PlayerHead uuid={entry.uuid} username={entry.username} rank={entry.rank} />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-bold text-foreground truncate text-sm sm:text-[15px]">{entry.username}</span>
+                  {entry.isHT1 && <Crown className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />}
+                  <RegionBadge region={entry.region} />
+                </div>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span
+                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono"
+                    style={TIER_COLOR_STYLES[displayTier] ?? TIER_COLOR_STYLES["Unranked"]}
+                  >
+                    <ModeIcon mode={mode} className="w-2.5 h-2.5" />
+                    {displayTier}
+                  </span>
+                </div>
+                {/* Mobile expanded detail — only shown after tap */}
+                {isExpanded && (
+                  <div className="flex items-center gap-2 mt-1.5 sm:hidden flex-wrap">
+                    <TierBadge tier={displayTier} />
                     <span className="font-mono text-xs text-sky-400 font-bold">{entry.points}pts</span>
+                    <span className="font-mono text-xs text-foreground/70">{entry.mmr.toLocaleString()} MMR</span>
+                    <WinLoss wins={entry.wins} losses={entry.losses} />
                   </div>
-                </div>
-                <div className="hidden sm:block text-right"><span className="font-mono text-sm text-foreground/90 font-semibold">{entry.mmr.toLocaleString()}</span></div>
-                <div className="hidden sm:block text-right"><WinLoss wins={entry.wins} losses={entry.losses} /></div>
-                <div className="hidden sm:block text-right"><span className="font-mono font-black text-sky-400 text-base">{entry.points}</span><span className="text-muted-foreground text-[11px] ml-0.5">pts</span></div>
-                <div className="hidden sm:flex justify-end"><TierBadge tier={entry.tier} /></div>
-                <div className="sm:hidden flex flex-col items-end gap-1">
-                  <span className="font-mono text-xs text-foreground/80">{entry.mmr.toLocaleString()}</span>
-                  <WinLoss wins={entry.wins} losses={entry.losses} />
-                </div>
+                )}
               </div>
-            </Link>
+              <div className="hidden sm:block text-right"><span className="font-mono text-sm text-foreground/90 font-semibold">{entry.mmr.toLocaleString()}</span></div>
+              <div className="hidden sm:block text-right"><WinLoss wins={entry.wins} losses={entry.losses} /></div>
+              <div className="hidden sm:block text-right"><span className="font-mono font-black text-sky-400 text-base">{entry.points}</span><span className="text-muted-foreground text-[11px] ml-0.5">pts</span></div>
+              <div className="hidden sm:flex justify-end"><TierBadge tier={displayTier} /></div>
+              {/* Mobile right column: just MMR when collapsed, nothing when expanded (detail is below username) */}
+              <div className="sm:hidden flex flex-col items-end gap-1">
+                {!isExpanded ? (
+                  <span className="font-mono text-xs text-foreground/80">{entry.mmr.toLocaleString()}</span>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground/50 font-mono">tap to close</span>
+                )}
+              </div>
+            </div>
           );
         })}
       </div>
     </div>
   );
 }
-
+ 
 function OverviewLeaderboard() {
   const { data, isLoading, isError } = useGetOverviewLeaderboard(undefined, {
     query: { queryKey: getGetOverviewLeaderboardQueryKey() },
   });
+  const [expandedUuid, setExpandedUuid] = useState<string | null>(null);
+ 
   if (isLoading) return <LeaderboardSkeleton />;
   if (isError || !data) return <div className="text-center py-24 text-muted-foreground"><p className="text-sm">Failed to load overview.</p></div>;
   const entries = data.entries ?? [];
@@ -241,18 +264,51 @@ function OverviewLeaderboard() {
       <div className="lb-scroll overflow-y-auto max-h-[370px] px-3 sm:px-4 pb-3 sm:pb-4 space-y-2">
         {entries.map((entry: any) => {
           const rankClass = entry.rank === 1 ? "row-rank-1" : entry.rank === 2 ? "row-rank-2" : entry.rank === 3 ? "row-rank-3" : "";
+          const isExpanded = expandedUuid === entry.uuid;
+          // Fix HT1: if a mode marks isHT1, show "HT1" not "LT1"
+          const modesFixed = (entry.modes ?? []).map((m: { mode: string; tier: string; isHT1?: boolean }) => ({
+            ...m,
+            tier: m.isHT1 ? "HT1" : m.tier,
+          }));
           return (
-            <Link key={entry.uuid} href={`/player/${entry.username}`}>
-              <div className={`glass-card rounded-2xl px-3 sm:px-4 py-3 sm:py-3.5 grid grid-cols-[36px_40px_1fr_auto] sm:grid-cols-[40px_44px_1fr_96px_100px] items-center gap-2 sm:gap-3 cursor-pointer ${rankClass}`}>
-                <RankBadge rank={entry.rank} />
-                <PlayerHead uuid={entry.uuid} username={entry.username} rank={entry.rank} />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-bold text-foreground truncate text-sm sm:text-[15px]">{entry.username}</span>
-                    <RegionBadge region={entry.region} />
-                  </div>
-                  <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                    {(entry.modes ?? []).map((m: { mode: string; tier: string }) => (
+            <div
+              key={entry.uuid}
+              className={`glass-card rounded-2xl px-3 sm:px-4 py-3 sm:py-3.5 grid grid-cols-[36px_40px_1fr_auto] sm:grid-cols-[40px_44px_1fr_96px_100px] items-center gap-2 sm:gap-3 cursor-pointer ${rankClass}`}
+              onClick={() => {
+                if (window.innerWidth < 640) {
+                  setExpandedUuid(isExpanded ? null : entry.uuid);
+                } else {
+                  window.location.href = `/player/${entry.username}`;
+                }
+              }}
+            >
+              <RankBadge rank={entry.rank} />
+              <PlayerHead uuid={entry.uuid} username={entry.username} rank={entry.rank} />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-bold text-foreground truncate text-sm sm:text-[15px]">{entry.username}</span>
+                  <RegionBadge region={entry.region} />
+                </div>
+                {/* Desktop: always show mode tier pills */}
+                <div className="hidden sm:flex items-center gap-1 mt-0.5 flex-wrap">
+                  {modesFixed.map((m: { mode: string; tier: string }) => (
+                    <span
+                      key={m.mode}
+                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono"
+                      style={TIER_COLOR_STYLES[m.tier] ?? TIER_COLOR_STYLES["Unranked"]}
+                    >
+                      <ModeIcon mode={m.mode} className="w-2.5 h-2.5" />
+                      {m.tier}
+                    </span>
+                  ))}
+                  {(!entry.modes || entry.modes.length === 0) && (
+                    <span className="text-[10px] text-muted-foreground/40">{entry.rankedModes} mode{entry.rankedModes !== 1 ? "s" : ""} ranked</span>
+                  )}
+                </div>
+                {/* Mobile: show tier pills only when expanded */}
+                {isExpanded && (
+                  <div className="flex sm:hidden items-center gap-1 mt-1.5 flex-wrap">
+                    {modesFixed.map((m: { mode: string; tier: string }) => (
                       <span
                         key={m.mode}
                         className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono"
@@ -265,22 +321,29 @@ function OverviewLeaderboard() {
                     {(!entry.modes || entry.modes.length === 0) && (
                       <span className="text-[10px] text-muted-foreground/40">{entry.rankedModes} mode{entry.rankedModes !== 1 ? "s" : ""} ranked</span>
                     )}
+                    <WinLoss wins={entry.totalWins} losses={entry.totalLosses} />
                   </div>
-                </div>
-                <div className="hidden sm:block text-right"><WinLoss wins={entry.totalWins} losses={entry.totalLosses} /></div>
-                <div className="text-right">
-                  <span className="font-mono font-black text-sky-400 text-lg sm:text-xl">{entry.totalPoints}</span>
-                  <span className="text-muted-foreground text-[11px] ml-0.5">pts</span>
-                </div>
+                )}
+                {/* Mobile collapsed: just show ranked mode count as hint */}
+                {!isExpanded && (
+                  <p className="sm:hidden text-[10px] text-muted-foreground/40 mt-0.5">
+                    {entry.modes?.length ?? entry.rankedModes ?? 0} mode{(entry.modes?.length ?? entry.rankedModes) !== 1 ? "s" : ""} ranked · tap for details
+                  </p>
+                )}
               </div>
-            </Link>
+              <div className="hidden sm:block text-right"><WinLoss wins={entry.totalWins} losses={entry.totalLosses} /></div>
+              <div className="text-right">
+                <span className="font-mono font-black text-sky-400 text-lg sm:text-xl">{entry.totalPoints}</span>
+                <span className="text-muted-foreground text-[11px] ml-0.5">pts</span>
+              </div>
+            </div>
           );
         })}
       </div>
     </div>
   );
 }
-
+ 
 function LeaderboardSection() {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const activeMode = MODES.find((m) => m.key === activeTab);
@@ -325,7 +388,7 @@ function LeaderboardSection() {
     </>
   );
 }
-
+ 
 function RanksPage() {
   return (
     <div className="glass-wrap">
@@ -387,7 +450,7 @@ function RanksPage() {
     </div>
   );
 }
-
+ 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -399,7 +462,7 @@ function CopyButton({ text }: { text: string }) {
     </button>
   );
 }
-
+ 
 function ServerPage() {
   return (
     <div className="glass-wrap">
@@ -461,7 +524,7 @@ function ServerPage() {
     </div>
   );
 }
-
+ 
 function ContactPage() {
   return (
     <div className="glass-wrap">
@@ -508,7 +571,7 @@ function ContactPage() {
     </div>
   );
 }
-
+ 
 function AboutPage() {
   return (
     <div className="glass-wrap">
@@ -551,7 +614,7 @@ function AboutPage() {
     </div>
   );
 }
-
+ 
 function PrivacyPage() {
   return (
     <div className="glass-wrap">
@@ -598,7 +661,7 @@ function PrivacyPage() {
     </div>
   );
 }
-
+ 
 const PAGE_TABS: { key: PageKey; label: string; icon: React.ReactNode }[] = [
   { key: "leaderboard", label: "Leaderboard", icon: <Trophy className="w-4 h-4" /> },
   { key: "ranks",       label: "Ranks",       icon: <Shield className="w-4 h-4" /> },
@@ -607,7 +670,7 @@ const PAGE_TABS: { key: PageKey; label: string; icon: React.ReactNode }[] = [
   { key: "contact",     label: "Contact",      icon: <MessageCircle className="w-4 h-4" /> },
   { key: "privacy",     label: "Privacy",      icon: <FileText className="w-4 h-4" /> },
 ];
-
+ 
 function MobileSidebar({ open, onClose, activePage, setActivePage }: { open: boolean; onClose: () => void; activePage: PageKey; setActivePage: (p: PageKey) => void }) {
   return (
     <>
@@ -631,33 +694,33 @@ function MobileSidebar({ open, onClose, activePage, setActivePage }: { open: boo
     </>
   );
 }
-
+ 
 export default function LeaderboardPage() {
   const [activePage, setActivePage] = useState<PageKey>("leaderboard");
   const [region, setRegion] = useState<"US" | "EU" | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
+ 
   useEffect(() => {
     fetch("https://ipapi.co/json/").then((r) => r.json()).then((d: any) => setRegion(EU_COUNTRIES.has(d.country_code) ? "EU" : "US")).catch(() => setRegion("US"));
   }, []);
-
+ 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
+ 
   return (
     <div className="relative min-h-screen bg-background">
       <div className="bg-orbs" aria-hidden><div className="bg-orb-3" /></div>
-
+ 
       {/* ── Header: logo + nav only, no region badge ── */}
       <header className="glass-header sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-5 py-3.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5 flex-shrink-0">
             <img src={logoUrl} alt="JoyedTiers" className="h-9 w-auto object-contain" style={{ imageRendering: "pixelated" }} />
-            <span className="font-black text-lg tracking-tight bg-gradient-to-r from-sky-300 to-white bg-clip-text text-transparent">JoyedTiers</span>
+            <span className="font-black text-lg tracking-tight bg-gradient-to-r from-green-400 to-emerald-200 bg-clip-text text-transparent">JoyedTiers</span>
           </div>
           <nav className="hidden sm:flex items-center gap-1">
             {PAGE_TABS.map((tab) => (
@@ -672,7 +735,7 @@ export default function LeaderboardPage() {
           </nav>
         </div>
       </header>
-
+ 
       {/* ── Hero: big logo image above title, no region badge ── */}
       <section className="relative z-10 pt-12 pb-10 sm:pt-16 sm:pb-12 text-center overflow-hidden">
         <div className="hero-glow-ring" aria-hidden />
@@ -692,9 +755,20 @@ export default function LeaderboardPage() {
             <Swords className="w-4 h-4 flex-shrink-0 opacity-70" />
             Minecraft PvP Ranked Leaderboard
           </p>
+          <div className="mt-4 flex items-center justify-center gap-2 flex-wrap px-4">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-bold font-mono tracking-wider" style={{ background: "rgba(101,163,13,0.15)", border: "1px solid rgba(101,163,13,0.3)", color: "#86efac" }}>
+              ⚔ 8 PvP Modes
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-bold font-mono tracking-wider" style={{ background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.28)", color: "#fde68a" }}>
+              <Crown className="w-3 h-3" /> HT1 Throne System
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-bold font-mono tracking-wider" style={{ background: "rgba(56,189,248,0.1)", border: "1px solid rgba(56,189,248,0.25)", color: "#7dd3fc" }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse inline-block mr-0.5" />Live Rankings
+            </span>
+          </div>
         </div>
       </section>
-
+ 
       <main className="relative z-10 max-w-6xl mx-auto px-3 sm:px-5 pb-28 sm:pb-14">
         {activePage === "leaderboard" && <LeaderboardSection />}
         {activePage === "ranks"       && <RanksPage />}
@@ -703,18 +777,18 @@ export default function LeaderboardPage() {
         {activePage === "about"       && <AboutPage />}
         {activePage === "privacy"     && <PrivacyPage />}
       </main>
-
+ 
       <div className="fixed bottom-6 right-5 z-30 sm:hidden">
         <button
           onClick={() => setSidebarOpen(true)}
           className="flex items-center gap-2 px-4 py-3 rounded-2xl font-semibold text-sm"
-          style={{ background: "linear-gradient(135deg, rgba(56,189,248,.35) 0%, rgba(99,102,241,.25) 100%)", border: "1px solid rgba(56,189,248,.45)", boxShadow: "0 0 24px rgba(56,189,248,.3), 0 8px 32px rgba(0,0,0,.6)", color: "#bae6fd" }}
+          style={{ background: "linear-gradient(135deg, rgba(74,222,128,.3) 0%, rgba(16,185,129,.2) 100%)", border: "1px solid rgba(74,222,128,.4)", boxShadow: "0 0 24px rgba(74,222,128,.25), 0 8px 32px rgba(0,0,0,.6)", color: "#bbf7d0" }}
         >
           <Menu className="w-4 h-4" />
           <span>{PAGE_TABS.find(t => t.key === activePage)?.label}</span>
         </button>
       </div>
-
+ 
       <MobileSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} activePage={activePage} setActivePage={setActivePage} />
     </div>
   );
