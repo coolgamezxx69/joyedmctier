@@ -202,7 +202,9 @@ function ModeLeaderboard({ mode }: { mode: ModeKey }) {
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 sm:hidden">
-                    <TierBadge tier={entry.tier} />
+                    <div className="hidden sm:block">
+  <TierBadge tier={entry.tier} />
+</div>
                     <span className="font-mono text-xs text-sky-400 font-bold">{entry.points}pts</span>
                   </div>
                 </div>
