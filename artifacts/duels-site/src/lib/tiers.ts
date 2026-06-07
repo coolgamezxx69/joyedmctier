@@ -45,7 +45,19 @@ export const MODES = [
   { key: "uhc", label: "UHC" },
 ] as const;
 
+export const SUB_MODES = [
+  { key: "cartpvp", label: "Cart PvP" },
+  { key: "speed", label: "Speed" },
+  { key: "bow", label: "Bow" },
+  { key: "creeper", label: "Creeper" },
+  { key: "trident", label: "Trident" },
+  { key: "elytra", label: "Elytra" },
+  { key: "diamondsmp", label: "Diamond SMP" },
+  { key: "diamondvanilla", label: "Diamond Vanilla" },
+] as const;
+
 export type ModeKey = (typeof MODES)[number]["key"];
+export type SubModeKey = (typeof SUB_MODES)[number]["key"];
 
 export const EU_COUNTRIES = new Set([
   "AT","BE","BG","HR","CY","CZ","DK","EE","FI","FR","DE","GR","HU",

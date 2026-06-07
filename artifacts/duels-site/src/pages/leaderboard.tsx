@@ -2,14 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useGetLeaderboard, getGetLeaderboardQueryKey, useGetOverviewLeaderboard, getGetOverviewLeaderboardQueryKey } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MODES, TIER_COLORS, TIER_BORDER_GLOW, EU_COUNTRIES, type ModeKey } from "@/lib/tiers";
-import { Trophy, Crown, Swords, Star, Zap, Server, Shield, Menu, Copy, Check, Sword, FlaskConical, Gem, Axe, Sparkles, Hammer, Target, Search, X, MessageCircle, Info, FileText } from "lucide-react";
+import { MODES, SUB_MODES, TIER_COLORS, TIER_BORDER_GLOW, EU_COUNTRIES, type ModeKey, type SubModeKey } from "@/lib/tiers";
+import { Trophy, Crown, Swords, Star, Zap, Server, Shield, Menu, Copy, Check, Sword, FlaskConical, Gem, Axe, Sparkles, Hammer, Target, Search, X, MessageCircle, Info, FileText, BowArrow, Wind } from "lucide-react";
 import logoUrl from "@assets/JTlogoNEW.png";
 import heroLogoUrl from "@assets/a.png";
 import CookieBanner from "@/components/CookieBanner";
  
 type TabKey = ModeKey | "overview";
-type PageKey = "leaderboard" | "ranks" | "server" | "contact" | "about" | "privacy";
+type SubTabKey = SubModeKey | "sub-overview";
+type PageKey = "leaderboard" | "subleaderboard" | "ranks" | "server" | "contact" | "about" | "privacy";
  
 function ModeIcon({ mode, className = "w-3.5 h-3.5" }: { mode: string; className?: string }) {
   switch (mode) {
@@ -21,6 +22,14 @@ function ModeIcon({ mode, className = "w-3.5 h-3.5" }: { mode: string; className
     case "crystal":  return <Gem className={className} />;
     case "mace":     return <Hammer className={className} />;
     case "uhc":      return <Sparkles className={className} />;
+    case "cartpvp":  return <Zap className={className} />;
+    case "speed":    return <Zap className={className} />;
+    case "bow":      return <BowArrow className={className} />;
+    case "creeper":  return <Zap className={className} />;
+    case "trident":  return <Zap className={className} />;
+    case "elytra":   return <Wind className={className} />;
+    case "diamondsmp": return <Sword className={className} />;
+    case "diamondvanilla": return <Sword className={className} />;
   }
 }
  
@@ -243,7 +252,6 @@ function OverviewLeaderboard() {
       <div className="lb-scroll overflow-y-auto max-h-[370px] px-3 sm:px-4 pb-3 sm:pb-4 space-y-2">
         {entries.map((entry: any) => {
           const rankClass = entry.rank === 1 ? "row-rank-1" : entry.rank === 2 ? "row-rank-2" : entry.rank === 3 ? "row-rank-3" : "";
-          // Fix HT1: if a mode marks isHT1, show "HT1" not "LT1"
           const modesFixed = (entry.modes ?? []).map((m: { mode: string; tier: string; isHT1?: boolean }) => ({
             ...m,
             tier: m.isHT1 ? "HT1" : m.tier,
@@ -258,7 +266,6 @@ function OverviewLeaderboard() {
                     <span className="font-bold text-foreground truncate text-sm sm:text-[15px]">{entry.username}</span>
                     <RegionBadge region={entry.region} />
                   </div>
-                  {/* Desktop: show all mode tier pills */}
                   <div className="hidden sm:flex items-center gap-1 mt-0.5 flex-wrap">
                     {modesFixed.map((m: { mode: string; tier: string }) => (
                       <span
@@ -274,7 +281,6 @@ function OverviewLeaderboard() {
                       <span className="text-[10px] text-muted-foreground/40">{entry.rankedModes} mode{entry.rankedModes !== 1 ? "s" : ""} ranked</span>
                     )}
                   </div>
-                  {/* Mobile: just mode count, full tiers on player profile */}
                   <div className="sm:hidden mt-0.5">
                     <span className="text-[11px] text-muted-foreground/50 font-mono">
                       {entry.modes?.length ?? entry.rankedModes ?? 0} mode{(entry.modes?.length ?? entry.rankedModes) !== 1 ? "s" : ""} ranked
@@ -294,7 +300,152 @@ function OverviewLeaderboard() {
     </div>
   );
 }
- 
+
+function SubModeLeaderboard({ mode }: { mode: SubModeKey }) {
+  const [data, setData] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+
+  useEffect(() => {
+    setIsLoading(true);
+    setIsError(false);
+    fetch(`/api/sub-leaderboard/${mode}`)
+      .then((r) => {
+        if (!r.ok) throw new Error("Fetch failed");
+        return r.json();
+      })
+      .then((json) => setData(json))
+      .catch(() => setIsError(true))
+      .finally(() => setIsLoading(false));
+  }, [mode]);
+
+  if (isLoading) return <LeaderboardSkeleton />;
+  if (isError || !data) return <div className="text-center py-24 text-muted-foreground"><p className="text-sm">Failed to load subleaderboard.</p></div>;
+  const entries = data.entries ?? [];
+  if (!entries.length) return <div className="text-center py-24 text-muted-foreground"><Zap className="w-10 h-10 mx-auto mb-3 opacity-20" /><p className="text-sm">No ranked SubDuels players yet.</p></div>;
+
+  return (
+    <div>
+      <div className="hidden sm:grid grid-cols-[40px_44px_1fr_96px_100px] items-center gap-3 px-7 sm:px-8 pt-3 pb-2">
+        <div /><div /><ColHeader>Player</ColHeader><ColHeader right>MMR</ColHeader><ColHeader right>W / L</ColHeader><ColHeader right>Points</ColHeader>
+      </div>
+      <div className="lb-scroll overflow-y-auto max-h-[370px] px-3 sm:px-4 pb-3 sm:pb-4 space-y-2">
+        {entries.map((entry: any) => (
+          <Link key={entry.uuid} href={`/player/${entry.username}`}>
+            <div className="glass-card rounded-2xl px-3 sm:px-4 py-3 sm:py-3.5 grid grid-cols-[36px_40px_1fr_auto] sm:grid-cols-[40px_44px_1fr_96px_100px] items-center gap-2 sm:gap-3 cursor-pointer">
+              <RankBadge rank={entry.rank} />
+              <PlayerHead uuid={entry.uuid} username={entry.username} rank={entry.rank} />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-bold text-foreground truncate text-sm sm:text-[15px]">{entry.username}</span>
+                  <RegionBadge region={entry.region} />
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="font-mono text-[11px] text-muted-foreground/60">{entry.mmr.toLocaleString()} MMR</span>
+                  <TierBadge tier={entry.isHT1 ? "HT1" : entry.tier} />
+                </div>
+              </div>
+              <div className="hidden sm:block text-right"><span className="font-mono text-sm text-foreground/90 font-semibold">{entry.mmr.toLocaleString()}</span></div>
+              <div className="hidden sm:block text-right"><WinLoss wins={entry.wins} losses={entry.losses} /></div>
+              <div className="text-right"><span className="font-mono font-black text-sky-400 text-base">{entry.points}</span><span className="text-muted-foreground text-[11px] ml-0.5">pts</span></div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SubOverviewLeaderboard() {
+  const [data, setData] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+
+  useEffect(() => {
+    setIsLoading(true);
+    setIsError(false);
+    fetch("/api/sub-leaderboard/overview")
+      .then((r) => {
+        if (!r.ok) throw new Error("Fetch failed");
+        return r.json();
+      })
+      .then((json) => setData(json))
+      .catch(() => setIsError(true))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  if (isLoading) return <LeaderboardSkeleton />;
+  if (isError || !data) return <div className="text-center py-24 text-muted-foreground"><p className="text-sm">Failed to load SubDuels overview.</p></div>;
+  const entries = data.entries ?? [];
+  if (!entries.length) return <div className="text-center py-24 text-muted-foreground"><Zap className="w-10 h-10 mx-auto mb-3 opacity-20" /><p className="text-sm">No ranked SubDuels players yet.</p></div>;
+
+  return (
+    <div>
+      <div className="hidden sm:grid grid-cols-[40px_44px_1fr_96px_100px] items-center gap-3 px-7 sm:px-8 pt-3 pb-2">
+        <div /><div /><ColHeader>Player</ColHeader><ColHeader right>W / L</ColHeader><ColHeader right>Points</ColHeader>
+      </div>
+      <div className="lb-scroll overflow-y-auto max-h-[370px] px-3 sm:px-4 pb-3 sm:pb-4 space-y-2">
+        {entries.map((entry: any) => (
+          <Link key={entry.uuid} href={`/player/${entry.username}`}>
+            <div className="glass-card rounded-2xl px-3 sm:px-4 py-3 sm:py-3.5 grid grid-cols-[36px_40px_1fr_auto] sm:grid-cols-[40px_44px_1fr_96px_100px] items-center gap-2 sm:gap-3 cursor-pointer">
+              <RankBadge rank={entry.rank} />
+              <PlayerHead uuid={entry.uuid} username={entry.username} rank={entry.rank} />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-bold text-foreground truncate text-sm sm:text-[15px]">{entry.username}</span>
+                  <RegionBadge region={entry.region} />
+                </div>
+                <div className="mt-1 text-[11px] text-muted-foreground/60 font-mono">
+                  {entry.modes?.length ?? 0} mode{(entry.modes?.length ?? 0) !== 1 ? "s" : ""} ranked
+                </div>
+              </div>
+              <div className="hidden sm:block text-right"><WinLoss wins={entry.totalWins} losses={entry.totalLosses} /></div>
+              <div className="text-right"><span className="font-mono font-black text-sky-400 text-lg sm:text-xl">{entry.totalPoints}</span><span className="text-muted-foreground text-[11px] ml-0.5">pts</span></div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SubLeaderboardSection() {
+  const [activeTab, setActiveTab] = useState<SubTabKey>("sub-overview");
+  const activeMode = SUB_MODES.find((m) => m.key === activeTab);
+  return (
+    <>
+      <div className="glass-tabs rounded-2xl p-2 mb-5 overflow-x-auto tabs-scroll">
+        <div className="flex gap-1.5 min-w-max sm:min-w-0 sm:flex-wrap">
+          <button onClick={() => setActiveTab("sub-overview")} className={`px-4 sm:px-5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === "sub-overview" ? "glass-tab-active" : "text-muted-foreground hover:text-foreground hover:bg-white/6"}`}>
+            <Zap className="w-3.5 h-3.5 flex-shrink-0" />Overview
+          </button>
+          {SUB_MODES.map((m) => (
+            <button key={m.key} onClick={() => setActiveTab(m.key as SubModeKey)} className={`px-4 sm:px-5 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${activeTab === m.key ? "glass-tab-active" : "text-muted-foreground hover:text-foreground hover:bg-white/6"}`}>
+              <ModeIcon mode={m.key} />{m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="glass-wrap">
+        <div className="glass rounded-[1.1rem] overflow-hidden">
+          <div className="px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-3 flex-wrap border-b border-white/6">
+            <div>
+              <h2 className="text-base font-bold text-foreground tracking-tight flex items-center gap-2">
+                {activeTab === "sub-overview" ? <><Zap className="w-4 h-4 text-purple-400" />SubDuels Overview</> : <><ModeIcon mode={activeTab} className="w-4 h-4 text-purple-400" />{activeMode?.label ?? activeTab}</>}
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">{activeTab === "sub-overview" ? "SubDuels total points across all sub modes" : "SubDuels · Sorted by MMR · top 50 players"}</p>
+            </div>
+            <div className="flex items-center gap-2"><PlayerSearch /></div>
+          </div>
+          <div className="glass-rainbow-line" />
+          {activeTab === "sub-overview" ? <SubOverviewLeaderboard /> : <SubModeLeaderboard mode={activeTab as SubModeKey} />}
+          <div className="mt-4 px-5 sm:px-8 pb-6 text-center text-sm text-muted-foreground">10 SubDuels matches per mode required to appear on the leaderboard.</div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function LeaderboardSection() {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const activeMode = MODES.find((m) => m.key === activeTab);
@@ -611,6 +762,7 @@ function PrivacyPage() {
  
 const PAGE_TABS: { key: PageKey; label: string; icon: React.ReactNode }[] = [
   { key: "leaderboard", label: "Leaderboard", icon: <Trophy className="w-4 h-4" /> },
+  { key: "subleaderboard", label: "SubDuels", icon: <Zap className="w-4 h-4" /> },
   { key: "ranks",       label: "Ranks",       icon: <Shield className="w-4 h-4" /> },
   { key: "server",      label: "Server Info",  icon: <Server className="w-4 h-4" /> },
   { key: "about",       label: "About",        icon: <Info className="w-4 h-4" /> },
@@ -716,6 +868,7 @@ export default function LeaderboardPage() {
  
       <main className="relative z-10 max-w-6xl mx-auto px-3 sm:px-5 pb-28 sm:pb-14">
         {activePage === "leaderboard" && <LeaderboardSection />}
+        {activePage === "subleaderboard" && <SubLeaderboardSection />}
         {activePage === "ranks"       && <RanksPage />}
         {activePage === "server"      && <ServerPage />}
         {activePage === "contact"     && <ContactPage />}
