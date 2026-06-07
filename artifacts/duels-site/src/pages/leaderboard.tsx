@@ -6,6 +6,7 @@ import { MODES, TIER_COLORS, TIER_BORDER_GLOW, EU_COUNTRIES, type ModeKey } from
 import { Trophy, Crown, Swords, Star, Zap, Server, Shield, Menu, Copy, Check, Sword, FlaskConical, Gem, Axe, Sparkles, Hammer, Target, Search, X, MessageCircle, Info, FileText } from "lucide-react";
 import logoUrl from "@assets/JTlogoNEW.png";
 import heroLogoUrl from "@assets/a.png";
+import CookieBanner from "@/components/CookieBanner";
  
 type TabKey = ModeKey | "overview";
 type PageKey = "leaderboard" | "ranks" | "server" | "contact" | "about" | "privacy";
@@ -648,7 +649,7 @@ export default function LeaderboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
  
   useEffect(() => {
-    fetch("https://ipapi.co/json/").then((r) => r.json()).then((d: any) => setRegion(EU_COUNTRIES.has(d.country_code) ? "EU" : "US")).catch(() => setRegion("US"));
+    fetch("/api/geoip").then((r) => r.json()).then((d: any) => setRegion(d?.region ?? "US")).catch(() => setRegion("US"));
   }, []);
  
   useEffect(() => {
@@ -659,6 +660,7 @@ export default function LeaderboardPage() {
  
   return (
     <div className="relative min-h-screen bg-background">
+      <CookieBanner />
       <div className="bg-orbs" aria-hidden><div className="bg-orb-3" /></div>
  
       {/* ── Header ── */}
