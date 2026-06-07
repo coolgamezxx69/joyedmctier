@@ -17,17 +17,17 @@ function subSyncMatchToAPI(winnerUUID: text, loserUUID: text, mode: text):
     set {_lFight} to {sub.fights.%{_mode}%::%{_loserUUID}%}
 
     # Sync winner
-    set {_wBody} to "{""uuid"":""%{_winnerUUID}%"",""mode"":""%{_mode}%"",""mmr"":%{_wMMR}%,""wins"":%{_wWins}%,""losses"":{sub.losses.%{_mode}%::%{_winnerUUID}%},""fights"":%{_wFight}%}"
-    make a POST request to "{@API_BASE}/sub-sync/stats" with headers "Content-Type: application/json", body {_wBody}
+    set {_wBody} to "{\"uuid\":\"%{_winnerUUID}%\",\"mode\":\"%{_mode}%\",\"mmr\":%{_wMMR}%,\"wins\":%{_wWins}%,\"losses\":%{sub.losses.%{_mode}%::%{_winnerUUID}%}%,\"fights\":%{_wFight}%}"
+    make a POST request to "{@API_BASE}/sub-sync/stats" with headers "Content-Type: application/json" and body {_wBody}
 
     # Sync loser
-    set {_lBody} to "{""uuid"":""%{_loserUUID}%"",""mode"":""%{_mode}%"",""mmr"":%{_lMMR}%,""wins"":{sub.wins.%{_mode}%::%{_loserUUID}%},""losses"":%{_lLoss}%,""fights"":%{_lFight}%}"
-    make a POST request to "{@API_BASE}/sub-sync/stats" with headers "Content-Type: application/json", body {_lBody}
+    set {_lBody} to "{\"uuid\":\"%{_loserUUID}%\",\"mode\":\"%{_mode}%\",\"mmr\":%{_lMMR}%,\"wins\":%{sub.wins.%{_mode}%::%{_loserUUID}%}%,\"losses\":%{_lLoss}%,\"fights\":%{_lFight}%}"
+    make a POST request to "{@API_BASE}/sub-sync/stats" with headers "Content-Type: application/json" and body {_lBody}
 
 # Call this when HT1 changes for a sub mode
 function subSyncHT1ToAPI(newHolderUUID: text, mode: text):
-    set {_body} to "{""uuid"":""%{_newHolderUUID}%"",""mode"":""%{_mode}%""}"
-    make a POST request to "{@API_BASE}/sub-sync/ht1" with headers "Content-Type: application/json", body {_body}
+    set {_body} to "{\"uuid\":\"%{_newHolderUUID}%\",\"mode\":\"%{_mode}%\"}"
+    make a POST request to "{@API_BASE}/sub-sync/ht1" with headers "Content-Type: application/json" and body {_body}
 
 
 # ============================================================
