@@ -18,16 +18,16 @@ function subSyncMatchToAPI(winnerUUID: text, loserUUID: text, mode: text):
 
     # Sync winner
     set {_wBody} to "{""uuid"":""%{_winnerUUID}%"",""mode"":""%{_mode}%"",""mmr"":%{_wMMR}%,""wins"":%{_wWins}%,""losses"":{sub.losses.%{_mode}%::%{_winnerUUID}%},""fights"":%{_wFight}%}"
-    make a POST request to "{@API_BASE}/sub-sync/stats" with headers "Content-Type: application/json" and body {_wBody}
+    make a POST request to "{@API_BASE}/sub-sync/stats" with headers "Content-Type: application/json", body {_wBody}
 
     # Sync loser
     set {_lBody} to "{""uuid"":""%{_loserUUID}%"",""mode"":""%{_mode}%"",""mmr"":%{_lMMR}%,""wins"":{sub.wins.%{_mode}%::%{_loserUUID}%},""losses"":%{_lLoss}%,""fights"":%{_lFight}%}"
-    make a POST request to "{@API_BASE}/sub-sync/stats" with headers "Content-Type: application/json" and body {_lBody}
+    make a POST request to "{@API_BASE}/sub-sync/stats" with headers "Content-Type: application/json", body {_lBody}
 
 # Call this when HT1 changes for a sub mode
 function subSyncHT1ToAPI(newHolderUUID: text, mode: text):
     set {_body} to "{""uuid"":""%{_newHolderUUID}%"",""mode"":""%{_mode}%""}"
-    make a POST request to "{@API_BASE}/sub-sync/ht1" with headers "Content-Type: application/json" and body {_body}
+    make a POST request to "{@API_BASE}/sub-sync/ht1" with headers "Content-Type: application/json", body {_body}
 
 
 # ============================================================
@@ -188,6 +188,8 @@ function subApplyDuelMMR(winner: player, loser: player, mode: text):
         send "" to all players
         send "&c&lYou lost the HT1 throne in %{_modeName}% and have been placed into LT1." to {_loser}
         send "&a&lYou are now HT1 in %{_modeName}% — the best on the server!" to {_winner}
+        # Notify remote API about HT1 change
+        call subSyncHT1ToAPI({_wUUID}, {_mode})
         stop
 
     if {sub.ht1holder.%{_mode}%} is not set:
@@ -199,6 +201,8 @@ function subApplyDuelMMR(winner: player, loser: player, mode: text):
                 send "&6&l★ HT1 CROWNED [%{_modeName}%] ★" to all players
                 send "&e%name of {_winner}% &7is the first ever &6&lHT1&7 in %{_modeName}%!" to all players
                 send "" to all players
+                # Notify remote API about HT1 change
+                call subSyncHT1ToAPI({_wUUID}, {_mode})
 
     # ── RANK FEEDBACK ─────────────────────────────────────────
     set {_newWRank}   to subGetModeRank({_wUUID}, {_mode})
@@ -240,6 +244,9 @@ function subApplyDuelMMR(winner: player, loser: player, mode: text):
         send "&7Progress: &f%{_lProgress}%&7%% through %{_newLRank}%" to {_loser}
     send "&c&l-%{_loss}% MMR &7(%{_newLMMR}% total in %{_modeName}%)" to {_loser}
     send "" to {_loser}
+
+    # Sync match results to API
+    call subSyncMatchToAPI({_wUUID}, {_lUUID}, {_mode})
 
 # ============================================================
 #  MODE NAME + VALIDITY HELPERS
