@@ -1,0 +1,2703 @@
+options:
+    prefix: &b&lSubDuels&b » 
+
+# Subtiers → JoyedTiers API SYNC
+# Add these functions to push sub-duel MMR/win/loss/HT1 data to the API
+# after every match so the website leaderboard stays live.
+# Set your API_BASE to your deployed API URL.
+    API_BASE: https://api.joyedtiers.com/api
+
+# Call this at the end of subApplyDuelMMR (after MMR is updated)
+function subSyncMatchToAPI(winnerUUID: text, loserUUID: text, mode: text):
+    set {_wMMR}   to {sub.mmr.%{_mode}%::%{_winnerUUID}%}
+    set {_lMMR}   to {sub.mmr.%{_mode}%::%{_loserUUID}%}
+    set {_wWins}  to {sub.wins.%{_mode}%::%{_winnerUUID}%}
+    set {_lLoss}  to {sub.losses.%{_mode}%::%{_loserUUID}%}
+    set {_wFight} to {sub.fights.%{_mode}%::%{_winnerUUID}%}
+    set {_lFight} to {sub.fights.%{_mode}%::%{_loserUUID}%}
+
+    # Sync winner
+    set {_wBody} to "{""uuid"":""%{_winnerUUID}%"",""mode"":""%{_mode}%"",""mmr"":%{_wMMR}%,""wins"":%{_wWins}%,""losses"":{sub.losses.%{_mode}%::%{_winnerUUID}%},""fights"":%{_wFight}%}"
+    make a POST request to "{@API_BASE}/sub-sync/stats" with headers "Content-Type: application/json" and body {_wBody}
+
+    # Sync loser
+    set {_lBody} to "{""uuid"":""%{_loserUUID}%"",""mode"":""%{_mode}%"",""mmr"":%{_lMMR}%,""wins"":{sub.wins.%{_mode}%::%{_loserUUID}%},""losses"":%{_lLoss}%,""fights"":%{_lFight}%}"
+    make a POST request to "{@API_BASE}/sub-sync/stats" with headers "Content-Type: application/json" and body {_lBody}
+
+# Call this when HT1 changes for a sub mode
+function subSyncHT1ToAPI(newHolderUUID: text, mode: text):
+    set {_body} to "{""uuid"":""%{_newHolderUUID}%"",""mode"":""%{_mode}%""}"
+    make a POST request to "{@API_BASE}/sub-sync/ht1" with headers "Content-Type: application/json" and body {_body}
+
+
+# ============================================================
+#  SUB DUELS — Combined MMR + Kit system
+#  Gamemodes: cartpvp, speed, bow, creeper, trident, elytra,
+#             diamondsmp, diamondvanilla
+#
+#  Tier boundaries (MMR):
+#  LT5 0-499 | HT5 500-899 | LT4 900-1299 | HT4 1300-1699
+#  LT3 1700-2099 | HT3 2100-2499 | LT2 2500-2899 | HT2 2900-3299
+#  LT1 3300-3699 | HT1 — held by defeating the current HT1
+#
+#  PLACEMENT  : 10 matches per gamemode before rank is shown
+#  DECAY      : LT2+ players lose 25 MMR every 6h after 3 days idle
+#  ROUNDS     : FT1–FT15, MMR applied only on series win
+#  KIT EDITOR : /subeditkit — rearrange main-inventory slots per mode
+# ============================================================
+
+# ============================================================
+#  MMR FUNCTIONS
+# ============================================================
+
+function subGetModeMMR(p: player, mode: text) :: number:
+    set {_uuid} to "%uuid of {_p}%"
+    if {sub.mmr.%{_mode}%::%{_uuid}%} is set:
+        return {sub.mmr.%{_mode}%::%{_uuid}%}
+    return 1000
+
+function subGetModeFights(p: player, mode: text) :: number:
+    set {_uuid} to "%uuid of {_p}%"
+    if {sub.fights.%{_mode}%::%{_uuid}%} is set:
+        return {sub.fights.%{_mode}%::%{_uuid}%}
+    return 0
+
+function subHasCompletedPlacements(uuid: text, mode: text) :: boolean:
+    if {sub.fights.%{_mode}%::%{_uuid}%} is set:
+        if {sub.fights.%{_mode}%::%{_uuid}%} >= 10:
+            return true
+    return false
+
+function subTierFromMMR(mmr: number) :: text:
+    if {_mmr} < 500:
+        return "LT5"
+    else if {_mmr} < 900:
+        return "HT5"
+    else if {_mmr} < 1300:
+        return "LT4"
+    else if {_mmr} < 1700:
+        return "HT4"
+    else if {_mmr} < 2100:
+        return "LT3"
+    else if {_mmr} < 2500:
+        return "HT3"
+    else if {_mmr} < 2900:
+        return "LT2"
+    else if {_mmr} < 3300:
+        return "HT2"
+    else:
+        return "LT1"
+
+function subGetModeRank(uuid: text, mode: text) :: text:
+    if {sub.ht1holder.%{_mode}%} is {_uuid}:
+        return "HT1"
+    if subHasCompletedPlacements({_uuid}, {_mode}) is false:
+        return "Unranked"
+    if {sub.mmr.%{_mode}%::%{_uuid}%} is set:
+        return subTierFromMMR({sub.mmr.%{_mode}%::%{_uuid}%})
+    return subTierFromMMR(1000)
+
+function subTierProgress(mmr: number, uuid: text, mode: text) :: number:
+    if {sub.ht1holder.%{_mode}%} is {_uuid}:
+        return 100
+    if {_mmr} < 500:
+        return round(({_mmr} / 500) * 100)
+    else if {_mmr} < 900:
+        return round((({_mmr} - 500) / 400) * 100)
+    else if {_mmr} < 1300:
+        return round((({_mmr} - 900) / 400) * 100)
+    else if {_mmr} < 1700:
+        return round((({_mmr} - 1300) / 400) * 100)
+    else if {_mmr} < 2100:
+        return round((({_mmr} - 1700) / 400) * 100)
+    else if {_mmr} < 2500:
+        return round((({_mmr} - 2100) / 400) * 100)
+    else if {_mmr} < 2900:
+        return round((({_mmr} - 2500) / 400) * 100)
+    else if {_mmr} < 3300:
+        return round((({_mmr} - 2900) / 400) * 100)
+    else:
+        return round((({_mmr} - 3300) / 400) * 100)
+
+function subExpectedWin(mmrA: number, mmrB: number) :: number:
+    set {_diff} to ({_mmrB} - {_mmrA}) / 400
+    set {_pow} to 10 ^ {_diff}
+    return 1.0 / (1.0 + {_pow})
+
+function subCalcGain(winnerMMR: number, loserMMR: number, winnerFights: number) :: number:
+    set {_k} to 120
+    if {_winnerFights} < 10:
+        set {_k} to 300
+    set {_expected} to subExpectedWin({_winnerMMR}, {_loserMMR})
+    return round({_k} * (1.0 - {_expected}))
+
+function subCalcLoss(loserMMR: number, winnerMMR: number, loserFights: number) :: number:
+    set {_k} to 120
+    if {_loserFights} < 10:
+        set {_k} to 300
+    set {_expected} to subExpectedWin({_loserMMR}, {_winnerMMR})
+    return round({_k} * {_expected})
+
+function subApplyDuelMMR(winner: player, loser: player, mode: text):
+    set {_wUUID} to "%uuid of {_winner}%"
+    set {_lUUID} to "%uuid of {_loser}%"
+
+    set {_wMMR}    to subGetModeMMR({_winner}, {_mode})
+    set {_lMMR}    to subGetModeMMR({_loser},  {_mode})
+    set {_wFights} to subGetModeFights({_winner}, {_mode})
+    set {_lFights} to subGetModeFights({_loser},  {_mode})
+
+    set {_gain} to subCalcGain({_wMMR}, {_lMMR}, {_wFights})
+    set {_loss} to subCalcLoss({_lMMR}, {_wMMR}, {_lFights})
+
+    set {_oldWRank} to subGetModeRank({_wUUID}, {_mode})
+    set {_oldLRank} to subGetModeRank({_lUUID}, {_mode})
+
+    set {_newWMMR} to min(9999, max(0, {_wMMR} + {_gain}))
+    set {_newLMMR} to min(9999, max(0, {_lMMR} - {_loss}))
+
+    set {sub.mmr.%{_mode}%::%{_wUUID}%} to {_newWMMR}
+    set {sub.mmr.%{_mode}%::%{_lUUID}%} to {_newLMMR}
+
+    set {sub.fights.%{_mode}%::%{_wUUID}%} to {_wFights} + 1
+    set {sub.fights.%{_mode}%::%{_lUUID}%} to {_lFights} + 1
+
+    if {sub.wins.%{_mode}%::%{_wUUID}%} is set:
+        set {sub.wins.%{_mode}%::%{_wUUID}%} to {sub.wins.%{_mode}%::%{_wUUID}%} + 1
+    else:
+        set {sub.wins.%{_mode}%::%{_wUUID}%} to 1
+
+    if {sub.losses.%{_mode}%::%{_lUUID}%} is set:
+        set {sub.losses.%{_mode}%::%{_lUUID}%} to {sub.losses.%{_mode}%::%{_lUUID}%} + 1
+    else:
+        set {sub.losses.%{_mode}%::%{_lUUID}%} to 1
+
+    set {sub.mmr.lastfight.%{_mode}%::%{_wUUID}%} to now
+    set {sub.mmr.lastfight.%{_mode}%::%{_lUUID}%} to now
+
+    set {_modeName} to subGetQueueModeName({_mode})
+
+    # ── HT1 THRONE LOGIC ──────────────────────────────────────
+    if {sub.ht1holder.%{_mode}%} is {_lUUID}:
+        set {sub.ht1holder.%{_mode}%} to {_wUUID}
+        set {sub.mmr.%{_mode}%::%{_lUUID}%} to 3300
+        send "" to all players
+        send "&6&l★ HT1 THRONE CHANGE [%{_modeName}%] ★" to all players
+        send "&e%name of {_winner}% &7has dethroned &e%name of {_loser}%&7 in &6%{_modeName}%&7!" to all players
+        send "&7%name of {_winner}% is now the sole &6&lHT1&7 in %{_modeName}%." to all players
+        send "" to all players
+        send "&c&lYou lost the HT1 throne in %{_modeName}% and have been placed into LT1." to {_loser}
+        send "&a&lYou are now HT1 in %{_modeName}% — the best on the server!" to {_winner}
+        stop
+
+    if {sub.ht1holder.%{_mode}%} is not set:
+        if {_newWMMR} >= 3700:
+            if subHasCompletedPlacements({_wUUID}, {_mode}) is true:
+                set {sub.ht1holder.%{_mode}%} to {_wUUID}
+                set {sub.mmr.%{_mode}%::%{_wUUID}%} to 3700
+                send "" to all players
+                send "&6&l★ HT1 CROWNED [%{_modeName}%] ★" to all players
+                send "&e%name of {_winner}% &7is the first ever &6&lHT1&7 in %{_modeName}%!" to all players
+                send "" to all players
+
+    # ── RANK FEEDBACK ─────────────────────────────────────────
+    set {_newWRank}   to subGetModeRank({_wUUID}, {_mode})
+    set {_newLRank}   to subGetModeRank({_lUUID}, {_mode})
+    set {_wProgress}  to subTierProgress({_newWMMR}, {_wUUID}, {_mode})
+    set {_lProgress}  to subTierProgress({_newLMMR}, {_lUUID}, {_mode})
+    set {_wNewFights} to {_wFights} + 1
+    set {_lNewFights} to {_lFights} + 1
+
+    send "" to {_winner}
+    send "&b&l[%{_modeName}% MMR]" to {_winner}
+    if {_wNewFights} is 10:
+        send "&a&lPlacements complete! Your starting rank is &6%{_newWRank}%&a in %{_modeName}%." to {_winner}
+    else if {_wNewFights} < 10:
+        send "&7Placement match &f%{_wNewFights}%&7/&f10 &7in %{_modeName}%" to {_winner}
+    else:
+        if {_newWRank} is not {_oldWRank}:
+            if {_oldWRank} is "Unranked":
+                send "&6&l▲ RANKED! &eYou are now &6%{_newWRank}%&e in %{_modeName}%!" to {_winner}
+            else:
+                send "&6&l▲ RANK UP! &eYou are now &6%{_newWRank}%&e in %{_modeName}%!" to {_winner}
+        else:
+            send "&7%{_modeName}% Rank: &f%{_newWRank}%" to {_winner}
+        send "&7Progress: &f%{_wProgress}%&7%% through %{_newWRank}%" to {_winner}
+    send "&a&l+%{_gain}% MMR &7(%{_newWMMR}% total in %{_modeName}%)" to {_winner}
+    send "" to {_winner}
+
+    send "" to {_loser}
+    send "&b&l[%{_modeName}% MMR]" to {_loser}
+    if {_lNewFights} is 10:
+        send "&a&lPlacements complete! Your starting rank is &6%{_newLRank}%&a in %{_modeName}%." to {_loser}
+    else if {_lNewFights} < 10:
+        send "&7Placement match &f%{_lNewFights}%&7/&f10 &7in %{_modeName}%" to {_loser}
+    else:
+        if {_newLRank} is not {_oldLRank}:
+            send "&4&l▼ RANK DOWN! &cYou are now &4%{_newLRank}%&c in %{_modeName}%." to {_loser}
+        else:
+            send "&7%{_modeName}% Rank: &f%{_newLRank}%" to {_loser}
+        send "&7Progress: &f%{_lProgress}%&7%% through %{_newLRank}%" to {_loser}
+    send "&c&l-%{_loss}% MMR &7(%{_newLMMR}% total in %{_modeName}%)" to {_loser}
+    send "" to {_loser}
+
+# ============================================================
+#  MODE NAME + VALIDITY HELPERS
+# ============================================================
+
+function subGetQueueModeName(mode: text) :: text:
+    if {_mode} is "cartpvp":
+        return "CartPVP"
+    if {_mode} is "speed":
+        return "Speed"
+    if {_mode} is "bow":
+        return "Bow"
+    if {_mode} is "creeper":
+        return "Creeper"
+    if {_mode} is "trident":
+        return "Trident"
+    if {_mode} is "elytra":
+        return "Elytra"
+    if {_mode} is "diamondsmp":
+        return "Diamond SMP"
+    if {_mode} is "diamondvanilla":
+        return "Diamond Vanilla"
+    return {_mode}
+
+function subIsValidQueueMode(mode: text) :: boolean:
+    loop "cartpvp", "speed", "bow", "creeper", "trident", "elytra", "diamondsmp", "diamondvanilla":
+        if loop-value is {_mode}:
+            return true
+    return false
+
+# ============================================================
+#  TOTAL MMR / OVERALL RANK / POINTS
+# ============================================================
+
+function subGetTotalMMR(uuid: text) :: number:
+    set {_total} to 0
+    set {_rankedModes} to 0
+    loop "cartpvp", "speed", "bow", "creeper", "trident", "elytra", "diamondsmp", "diamondvanilla":
+        if subHasCompletedPlacements({_uuid}, loop-value) is true:
+            if {sub.mmr.%loop-value%::%{_uuid}%} is set:
+                add {sub.mmr.%loop-value%::%{_uuid}%} to {_total}
+            else:
+                add 1000 to {_total}
+            add 1 to {_rankedModes}
+    if {_rankedModes} is 0:
+        return 0
+    return {_total}
+
+function subGetOverallRank(uuid: text) :: number:
+    set {_myTotal} to subGetTotalMMR({_uuid})
+    set {_pos} to 1
+    loop "cartpvp", "speed", "bow", "creeper", "trident", "elytra", "diamondsmp", "diamondvanilla":
+        loop {sub.mmr.%loop-value%::*}:
+            set {_otherUUID} to loop-index-1
+            if {_otherUUID} is not {_uuid}:
+                if {_seen::%{_otherUUID}%} is not true:
+                    set {_seen::%{_otherUUID}%} to true
+                    if subGetTotalMMR({_otherUUID}) > {_myTotal}:
+                        add 1 to {_pos}
+    return {_pos}
+
+function subGetPointsFromRank(rank: text) :: number:
+    if {_rank} is "HT1":
+        return 60
+    else if {_rank} is "LT1":
+        return 45
+    else if {_rank} is "HT2":
+        return 30
+    else if {_rank} is "LT2":
+        return 20
+    else if {_rank} is "HT3":
+        return 10
+    else if {_rank} is "LT3":
+        return 6
+    else if {_rank} is "HT4":
+        return 4
+    else if {_rank} is "LT4":
+        return 3
+    else if {_rank} is "HT5":
+        return 2
+    else if {_rank} is "LT5":
+        return 1
+    return 0
+
+function subGetTotalPoints(uuid: text) :: number:
+    set {_total} to 0
+    loop "cartpvp", "speed", "bow", "creeper", "trident", "elytra", "diamondsmp", "diamondvanilla":
+        if subHasCompletedPlacements({_uuid}, loop-value) is true:
+            set {_rank} to subGetModeRank({_uuid}, loop-value)
+            add subGetPointsFromRank({_rank}) to {_total}
+    return {_total}
+
+# ============================================================
+#  MMR DETERIORATION — every 6 hours
+# ============================================================
+
+every 6 hours:
+    set {_decayAmount} to 25
+    set {_decayFloor}  to 2500
+    loop "cartpvp", "speed", "bow", "creeper", "trident", "elytra", "diamondsmp", "diamondvanilla":
+        call subDecayMode(loop-value, {_decayAmount}, {_decayFloor})
+
+function subDecayMode(mode: text, decayAmount: number, decayFloor: number):
+    loop {sub.mmr.%{_mode}%::*}:
+        set {_uuid} to loop-index-1
+        set {_mmr}  to loop-value-1
+        if {_mmr} >= {_decayFloor}:
+            if {sub.mmr.lastfight.%{_mode}%::%{_uuid}%} is set:
+                set {_lastFight} to {sub.mmr.lastfight.%{_mode}%::%{_uuid}%}
+                if time since {_lastFight} > 3 days:
+                    set {_newMMR} to max({_decayFloor}, {_mmr} - {_decayAmount})
+                    set {sub.mmr.%{_mode}%::%{_uuid}%} to {_newMMR}
+                    if {sub.ht1holder.%{_mode}%} is {_uuid}:
+                        if {_newMMR} < 3300:
+                            delete {sub.ht1holder.%{_mode}%}
+                            loop all players:
+                                if "%uuid of loop-player%" is {_uuid}:
+                                    send "{@prefix} &cYour HT1 throne in &f%{_mode}%&c has been vacated due to inactivity." to loop-player
+            else:
+                set {sub.mmr.lastfight.%{_mode}%::%{_uuid}%} to now
+
+# ============================================================
+#  ARENA POOL — reuses same arena locations as main duels
+# ============================================================
+
+on load:
+    set {sub.arena.small.1.p1} to location(-265, 103, -241, world("arena"))
+    set {sub.arena.small.1.p2} to location(-359, 103, -241, world("arena"))
+    set {sub.arena.small.2.p1} to location(-359, 103, -145, world("arena"))
+    set {sub.arena.small.2.p2} to location(-265, 103, -144, world("arena"))
+    set {sub.arena.small.3.p1} to location(-359, 103, -47, world("arena"))
+    set {sub.arena.small.3.p2} to location(-265, 103, -48, world("arena"))
+    set {sub.arena.small.4.p1} to location(-262, 103, -47, world("arena"))
+    set {sub.arena.small.4.p2} to location(-168, 103, -47, world("arena"))
+    set {sub.arena.small.5.p1} to location(-262, 103, -145, world("arena"))
+    set {sub.arena.small.5.p2} to location(-168, 103, -144, world("arena"))
+    set {sub.arena.small.6.p1} to location(-262, 103, -241, world("arena"))
+    set {sub.arena.small.6.p2} to location(-168, 103, -241, world("arena"))
+    set {sub.arena.small.7.p1} to location(-165, 103, -241, world("arena"))
+    set {sub.arena.small.7.p2} to location(-71,  103, -241, world("arena"))
+    set {sub.arena.big.1.p1} to location(81, 130, -339, world("arena"))
+    set {sub.arena.big.1.p2} to location(6,  130, -339, world("arena"))
+    set {sub.arena.big.2.p1} to location(81, 130, -391, world("arena"))
+    set {sub.arena.big.2.p2} to location(6,  130, -394, world("arena"))
+    set {sub.arena.big.3.p1} to location(81, 130, -449, world("arena"))
+    set {sub.arena.big.3.p2} to location(6,  130, -454, world("arena"))
+
+function subGetFreeSmallArena() :: number:
+    loop integers from 1 to 7:
+        if {sub.arena.small.%loop-number%.inuse} is not true:
+            return loop-number
+    return 0
+
+function subGetFreeBigArena() :: number:
+    loop integers from 1 to 3:
+        if {sub.arena.big.%loop-number%.inuse} is not true:
+            return loop-number
+    return 0
+
+# ============================================================
+#  INVENTORY SAVE / RESTORE HELPERS
+# ============================================================
+
+function subSaveDuelState(p1: player, p2: player):
+    loop 36 times:
+        set {sub.saved.inv.%{_p1}%.%loop-number - 1%} to slot (loop-number - 1) of {_p1}'s inventory
+    set {sub.saved.armor.helmet::%{_p1}%}     to {_p1}'s helmet
+    set {sub.saved.armor.chestplate::%{_p1}%} to {_p1}'s chestplate
+    set {sub.saved.armor.leggings::%{_p1}%}   to {_p1}'s leggings
+    set {sub.saved.armor.boots::%{_p1}%}      to {_p1}'s boots
+    set {sub.saved.armor.offhand::%{_p1}%}    to {_p1}'s offhand tool
+    set {sub.duel.pos::%{_p1}%}               to location of {_p1}
+    loop 36 times:
+        set {sub.saved.inv.%{_p2}%.%loop-number - 1%} to slot (loop-number - 1) of {_p2}'s inventory
+    set {sub.saved.armor.helmet::%{_p2}%}     to {_p2}'s helmet
+    set {sub.saved.armor.chestplate::%{_p2}%} to {_p2}'s chestplate
+    set {sub.saved.armor.leggings::%{_p2}%}   to {_p2}'s leggings
+    set {sub.saved.armor.boots::%{_p2}%}      to {_p2}'s boots
+    set {sub.saved.armor.offhand::%{_p2}%}    to {_p2}'s offhand tool
+    set {sub.duel.pos::%{_p2}%}               to location of {_p2}
+
+function subClearForDuel(p: player):
+    clear {_p}'s inventory
+    set {_p}'s helmet      to air
+    set {_p}'s chestplate  to air
+    set {_p}'s leggings    to air
+    set {_p}'s boots       to air
+    set {_p}'s offhand tool to air
+
+function subRestorePlayer(p: player):
+    clear {_p}'s inventory
+    set {_p}'s helmet      to air
+    set {_p}'s chestplate  to air
+    set {_p}'s leggings    to air
+    set {_p}'s boots       to air
+    set {_p}'s offhand tool to air
+    loop 36 times:
+        set slot (loop-number - 1) of {_p}'s inventory to {sub.saved.inv.%{_p}%.%loop-number - 1%}
+    delete {sub.saved.inv.%{_p}%::*}
+    set {_p}'s helmet      to {sub.saved.armor.helmet::%{_p}%}
+    set {_p}'s chestplate  to {sub.saved.armor.chestplate::%{_p}%}
+    set {_p}'s leggings    to {sub.saved.armor.leggings::%{_p}%}
+    set {_p}'s boots       to {sub.saved.armor.boots::%{_p}%}
+    set {_p}'s offhand tool to {sub.saved.armor.offhand::%{_p}%}
+    delete {sub.saved.armor.helmet::%{_p}%}
+    delete {sub.saved.armor.chestplate::%{_p}%}
+    delete {sub.saved.armor.leggings::%{_p}%}
+    delete {sub.saved.armor.boots::%{_p}%}
+    delete {sub.saved.armor.offhand::%{_p}%}
+    teleport {_p} to {sub.duel.pos::%{_p}%}
+    delete {sub.duel.pos::%{_p}%}
+
+function subCleanDuelVars(p: player):
+    delete {sub.duel.active::%{_p}%}
+    delete {sub.duel.opponent::%{_p}%}
+    delete {sub.duel.type::%{_p}%}
+    delete {sub.duel.arena::%{_p}%}
+    delete {sub.duel.arenatype::%{_p}%}
+
+function subCleanRoundVars(p: player):
+    delete {sub.duel.roundwins::%{_p}%}
+    delete {sub.duel.ft::%{_p}%}
+    delete {sub.duel.inroundbreak::%{_p}%}
+
+# ============================================================
+#  DEFAULT KIT ITEMS (slot 0-35, 1-indexed list)
+#  Used by kit editor to populate the editor GUI and as
+#  fallback when no custom kit is saved.
+# ============================================================
+
+function subGetDefaultKitItems(mode: text) :: objects:
+    # 36-slot list, index 1 = inv slot 0
+    set {_items::*} to (air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air, air)
+
+    if {_mode} is "cartpvp":
+        set {_items::1}  to 64 of arrow
+        set {_items::2}  to 16 of ender pearl
+        set {_items::3}  to minecart with tnt
+        set {_items::4}  to minecart with tnt
+        set {_items::5}  to minecart with tnt
+        set {_items::6}  to minecart with tnt
+        set {_items::7}  to splash potion of strong strength
+        set {_items::8}  to splash potion of strong speed
+        set {_items::9}  to 64 of experience bottle
+        set {_items::10} to red shulker box
+        set {_items::11} to 16 of ender pearl
+        set {_items::12} to minecart with tnt
+        set {_items::13} to minecart with tnt
+        set {_items::14} to minecart with tnt
+        set {_items::15} to minecart with tnt
+        set {_items::16} to splash potion of strong strength
+        set {_items::17} to splash potion of strong speed
+        set {_items::18} to splash potion of fire resistance
+        set {_items::19} to red shulker box
+        set {_items::20} to 16 of ender pearl
+        set {_pick} to netherite pickaxe
+        enchant {_pick} with efficiency 5
+        enchant {_pick} with unbreaking 3
+        enchant {_pick} with mending 1
+        enchant {_pick} with fortune 3
+        set {_items::21} to {_pick}
+        set {_items::22} to 64 of firework rocket
+        set {_elytra} to elytra
+        enchant {_elytra} with unbreaking 3
+        enchant {_elytra} with mending 1
+        set {_items::23} to {_elytra}
+        set {_bow} to bow
+        enchant {_bow} with power 5
+        enchant {_bow} with unbreaking 3
+        enchant {_bow} with mending 1
+        enchant {_bow} with flame 1
+        enchant {_bow} with punch 2
+        set {_items::24} to {_bow}
+        set {_items::25} to splash potion of strong strength
+        set {_items::26} to splash potion of strong speed
+        set {_items::27} to 64 of golden apple
+        set {_items::28} to minecart with tnt
+        set {_items::29} to 64 of rail
+        set {_sword} to netherite sword
+        enchant {_sword} with sharpness 5
+        enchant {_sword} with unbreaking 3
+        enchant {_sword} with mending 1
+        enchant {_sword} with fire aspect 2
+        enchant {_sword} with looting 3
+        enchant {_sword} with sweeping edge 3
+        set {_items::30} to {_sword}
+        set {_items::31} to 16 of ender pearl
+        set {_items::32} to 64 of cherry log
+        set {_crossbow} to crossbow
+        enchant {_crossbow} with quick charge 3
+        enchant {_crossbow} with unbreaking 3
+        enchant {_crossbow} with mending 1
+        enchant {_crossbow} with piercing 4
+        set {_items::33} to {_crossbow}
+        set {_fns} to flint and steel
+        enchant {_fns} with unbreaking 3
+        enchant {_fns} with mending 1
+        set {_items::34} to {_fns}
+        set {_items::35} to 64 of cobweb
+        set {_items::36} to 64 of golden apple
+
+    else if {_mode} is "speed":
+        set {_dsword} to diamond sword
+        enchant {_dsword} with sharpness 5
+        enchant {_dsword} with unbreaking 3
+        enchant {_dsword} with mending 1
+        enchant {_dsword} with fire aspect 2
+        enchant {_dsword} with looting 3
+        enchant {_dsword} with sweeping edge 3
+        set {_items::1} to {_dsword}
+
+    else if {_mode} is "bow":
+        set {_ibow} to bow
+        enchant {_ibow} with power 5
+        enchant {_ibow} with unbreaking 3
+        enchant {_ibow} with mending 1
+        enchant {_ibow} with flame 1
+        enchant {_ibow} with punch 2
+        enchant {_ibow} with infinity 1
+        set {_items::1} to {_ibow}
+        set {_items::2} to 1 of arrow
+
+    else if {_mode} is "creeper":
+        set {_items::1}  to 10 of tipped arrow of slowness
+        set {_items::2}  to 64 of creeper spawn egg
+        set {_items::5}  to golden pickaxe
+        set {_items::10} to 10 of tipped arrow of harming
+        set {_items::11} to 64 of creeper spawn egg
+        set {_items::14} to compass
+        set {_items::19} to water bucket
+        set {_items::20} to 64 of creeper spawn egg
+        set {_items::22} to bow of flame and power 5
+        set {_items::23} to 32 of cobweb
+        set {_items::24} to 16 of ender pearl
+        set {_saxe} to stone axe
+        enchant {_saxe} with sharpness 5
+        enchant {_saxe} with unbreaking 3
+        enchant {_saxe} with mending 1
+        enchant {_saxe} with efficiency 5
+        set {_items::25} to {_saxe}
+        set {_items::27} to 64 of cobblestone
+        set {_ssword} to stone sword
+        enchant {_ssword} with sharpness 5
+        enchant {_ssword} with unbreaking 3
+        enchant {_ssword} with mending 1
+        enchant {_ssword} with fire aspect 2
+        enchant {_ssword} with knockback 2
+        enchant {_ssword} with looting 3
+        enchant {_ssword} with sweeping edge 3
+        set {_items::28} to {_ssword}
+        set {_items::29} to 64 of creeper spawn egg
+        set {_items::30} to totem of undying
+        set {_ccbow} to crossbow
+        enchant {_ccbow} with quick charge 3
+        enchant {_ccbow} with unbreaking 3
+        enchant {_ccbow} with mending 1
+        enchant {_ccbow} with piercing 4
+        set {_items::31} to {_ccbow}
+        set {_items::32} to 24 of tnt
+        set {_items::33} to 16 of ender pearl
+        set {_items::34} to 64 of golden apple
+        set {_items::35} to shield
+        set {_items::36} to 64 of cobblestone
+
+    else if {_mode} is "trident":
+        set {_items::5}  to water bucket
+        set {_items::12} to pufferfish bucket
+        set {_shears} to shears
+        enchant {_shears} with unbreaking 3
+        enchant {_shears} with mending 1
+        enchant {_shears} with efficiency 5
+        set {_items::13} to {_shears}
+        set {_items::14} to water bucket
+        set {_items::21} to pufferfish bucket
+        set {_gpick} to golden pickaxe
+        enchant {_gpick} with efficiency 5
+        enchant {_gpick} with unbreaking 3
+        enchant {_gpick} with mending 1
+        enchant {_gpick} with fortune 3
+        set {_items::22} to {_gpick}
+        set {_items::23} to water bucket
+        set {_items::27} to 64 of cobblestone
+        set {_trid1} to trident
+        enchant {_trid1} with riptide 3
+        enchant {_trid1} with unbreaking 3
+        enchant {_trid1} with mending 1
+        set {_items::28} to trident of riptide 3 and unbreaking 3 and mending 
+        set {_trid2} to trident
+        enchant {_trid2} with loyalty 3
+        enchant {_trid2} with unbreaking 3
+        enchant {_trid2} with mending 1
+        enchant {_trid2} with channeling 1
+        set {_items::29} to trident of loyalty 3 and unbreaking 3 and mending and channeling
+        set {_items::30} to totem of undying
+        set {_items::31} to pufferfish bucket
+        set {_ghoe} to golden hoe
+        enchant {_ghoe} with efficiency 5
+        enchant {_ghoe} with unbreaking 3
+        enchant {_ghoe} with mending 1
+        set {_items::32} to {_ghoe}
+        set {_items::33} to water bucket
+        set {_items::34} to 6 of golden apple
+        set {_items::35} to 8 of cobweb
+        set {_items::36} to 6 of sponge
+
+    else if {_mode} is "elytra":
+        set {_items::1}  to 64 of tipped arrow of harming
+        set {_items::2}  to 1 of arrow
+        set {_items::4}  to totem of undying
+        set {_items::5}  to totem of undying
+        set {_items::6}  to totem of undying
+        set {_items::7}  to splash potion of strong strength
+        set {_items::8}  to splash potion of strong strength
+        set {_items::9}  to splash potion of strong strength
+        set {_items::14} to 12 of firework rocket
+        set {_items::15} to 64 of cobweb
+        set {_items::16} to splash potion of strong strength
+        set {_items::17} to splash potion of strong strength
+        set {_items::18} to splash potion of strong strength
+        set {_naxe} to netherite axe
+        enchant {_naxe} with sharpness 5
+        enchant {_naxe} with efficiency 5
+        enchant {_naxe} with unbreaking 3
+        enchant {_naxe} with mending 1
+        set {_items::19} to {_naxe}
+        set {_items::22} to 64 of wind charge
+        set {_items::23} to 16 of firework rocket
+        set {_items::24} to 64 of oak planks
+        set {_items::25} to splash potion of strong strength
+        set {_items::26} to splash potion of strong strength
+        set {_items::27} to splash potion of strong strength
+        set {_nsword} to netherite sword
+        enchant {_nsword} with sharpness 5
+        enchant {_nsword} with fire aspect 2
+        enchant {_nsword} with unbreaking 3
+        enchant {_nsword} with mending 1
+        enchant {_nsword} with looting 3
+        enchant {_nsword} with sweeping edge 3
+        set {_items::28} to {_nsword}
+        set {_items::29} to crossbow
+        set {_items::30} to 64 of golden apple
+        set {_mbow} to bow
+        enchant {_mbow} with power 5
+        enchant {_mbow} with flame 1
+        enchant {_mbow} with punch 2
+        enchant {_mbow} with unbreaking 3
+        enchant {_mbow} with mending 1
+        set {_items::31} to {_mbow}
+        set {_items::32} to 24 of firework rocket
+        set {_items::33} to 16 of ender pearl
+        set {_mcbow} to crossbow
+        enchant {_mcbow} with quick charge 3
+        enchant {_mcbow} with unbreaking 3
+        enchant {_mcbow} with mending 1
+        enchant {_mcbow} with piercing 4
+        set {_items::34} to {_mcbow}
+        set {_mshield} to shield
+        enchant {_mshield} with unbreaking 3
+        enchant {_mshield} with mending 1
+        set {_items::35} to {_mshield}
+        set {_items::36} to splash potion of strong strength
+
+    else if {_mode} is "diamondsmp":
+        set {_dsword} to diamond sword
+        enchant {_dsword} with sharpness 5
+        enchant {_dsword} with fire aspect 2
+        enchant {_dsword} with unbreaking 3
+        set {_daxe} to diamond axe
+        enchant {_daxe} with sharpness 5
+        enchant {_daxe} with unbreaking 3
+        set {_npick} to netherite pickaxe
+        enchant {_npick} with silk touch 1
+        enchant {_npick} with mending 1
+        enchant {_npick} with efficiency 5
+        enchant {_npick} with unbreaking 3
+        set {_items::1}  to {_dsword}
+        set {_items::2}  to {_daxe}
+        set {_items::3}  to 64 of experience bottle
+        set {_items::4}  to 64 of golden apple
+        set {_items::5}  to 64 of golden apple
+        set {_items::6}  to {_npick}
+        set {_items::7}  to 64 of oak log
+        set {_items::8}  to 64 of cobweb
+        set {_items::9}  to water bucket
+        set {_items::10} to water bucket
+        set {_items::11} to water bucket
+        set {_items::12} to 64 of experience bottle
+        set {_items::13} to 64 of ender pearl
+        set {_items::14} to 64 of chorus fruit
+        set {_items::15} to totem of undying
+        set {_items::16} to splash potion of strong strength
+        set {_items::17} to splash potion of strong strength
+        set {_items::18} to splash potion of strong strength
+        set {_items::19} to splash potion of strong strength
+        set {_items::20} to splash potion of strong strength
+        set {_items::21} to splash potion of strong strength
+        set {_items::22} to splash potion of strong strength
+        set {_items::23} to splash potion of strong strength
+        set {_items::24} to splash potion of strong strength
+        set {_items::25} to splash potion of strong strength
+        set {_items::26} to splash potion of strong strength
+        set {_items::27} to splash potion of strong strength
+        set {_items::28} to splash potion of strong strength
+        set {_items::29} to splash potion of strong strength
+        set {_items::30} to splash potion of strong strength
+        set {_items::31} to splash potion of strong strength
+        set {_items::32} to splash potion of speed
+        set {_items::33} to splash potion of speed
+        set {_items::34} to splash potion of speed
+        set {_items::35} to splash potion of long fire resistance
+        set {_items::36} to splash potion of long fire resistance
+
+    else if {_mode} is "diamondvanilla":
+        set {_dvsword} to diamond sword
+        enchant {_dvsword} with sharpness 5
+        enchant {_dvsword} with unbreaking 3
+        enchant {_dvsword} with mending 1
+        enchant {_dvsword} with fire aspect 2
+        enchant {_dvsword} with looting 3
+        enchant {_dvsword} with sweeping edge 3
+        set {_dvpick} to diamond pickaxe
+        enchant {_dvpick} with efficiency 5
+        enchant {_dvpick} with unbreaking 3
+        enchant {_dvpick} with mending 1
+        set {_items::1}  to 64 of ender pearl
+        set {_items::2}  to 64 of ender pearl
+        set {_items::3}  to 64 of experience bottle
+        set {_items::4}  to totem of undying
+        set {_items::5}  to totem of undying
+        set {_items::6}  to totem of undying
+        set {_items::7}  to totem of undying
+        set {_items::8}  to splash potion of regeneration
+        set {_items::9}  to splash potion of turtle master
+        set {_items::10} to 64 of ender pearl
+        set {_items::11} to 64 of ender pearl
+        set {_items::12} to 64 of experience bottle
+        set {_items::13} to totem of undying
+        set {_items::14} to totem of undying
+        set {_items::15} to totem of undying
+        set {_items::16} to splash potion of turtle master
+        set {_items::17} to splash potion of regeneration
+        set {_items::18} to splash potion of turtle master
+        set {_items::19} to 64 of end crystal
+        set {_items::20} to 64 of obsidian
+        set {_items::21} to 64 of experience bottle
+        set {_items::22} to totem of undying
+        set {_items::23} to totem of undying
+        set {_items::24} to totem of undying
+        set {_items::25} to splash potion of regeneration
+        set {_items::26} to splash potion of regeneration
+        set {_items::27} to splash potion of turtle master
+        set {_items::28} to 64 of end crystal
+        set {_items::29} to 64 of obsidian
+        set {_items::30} to splash potion of turtle master
+        set {_items::31} to {_dvsword}
+        set {_items::32} to 16 of ender pearl
+        set {_items::33} to {_dvpick}
+        set {_items::34} to splash potion of regeneration
+        set {_items::35} to totem of undying
+        set {_items::36} to 64 of golden apple
+
+    return {_items::*}
+
+# ============================================================
+#  ARMOUR HELPER — applies default armour + offhand per mode
+# ============================================================
+
+function subApplyDefaultArmourAndOffhand(p: player, mode: text):
+    if {_mode} is "cartpvp":
+        set {_p}'s helmet     to netherite helmet of protection 4, unbreaking 3, mending
+        set {_p}'s chestplate to netherite chestplate of protection 4, unbreaking 3, mending
+        set {_p}'s leggings   to netherite leggings of protection 4, unbreaking 3, mending
+        set {_p}'s boots      to netherite boots of protection 4, unbreaking 3, mending
+        set {_p}'s offhand tool to totem of undying
+
+    else if {_mode} is "speed":
+        set {_p}'s helmet     to diamond helmet of protection 4
+        set {_p}'s chestplate to diamond chestplate of protection 4
+        set {_p}'s leggings   to iron leggings of protection 4
+        set {_p}'s boots      to diamond boots of protection 4
+        apply speed 2 to {_p} for 99999 seconds
+
+    else if {_mode} is "bow":
+        set {_p}'s helmet     to iron helmet of protection 4
+        set {_p}'s chestplate to iron chestplate of protection 4
+        set {_p}'s leggings   to iron leggings of protection 4
+        set {_p}'s boots      to iron boots of protection 4
+
+    else if {_mode} is "creeper":
+        set {_p}'s helmet     to chainmail helmet of protection 4
+        set {_p}'s chestplate to chainmail chestplate of protection 4
+        set {_p}'s leggings   to chainmail leggings of protection 4
+        set {_p}'s boots      to chainmail boots of protection 4
+        set {_p}'s offhand tool to shield
+
+    else if {_mode} is "trident":
+        set {_p}'s helmet     to turtle helmet of protection 4, unbreaking 3, mending
+        set {_p}'s chestplate to golden chestplate of protection 4, unbreaking 3, mending
+        set {_p}'s leggings   to golden leggings of protection 4, unbreaking 3, mending
+        set {_p}'s boots      to golden boots of protection 4, unbreaking 3, mending, depth strider 3
+        set {_p}'s offhand tool to totem of undying
+
+    else if {_mode} is "elytra":
+        set {_p}'s helmet     to netherite helmet of protection 4, unbreaking 3, mending
+        set {_p}'s chestplate to air
+        set {_p}'s leggings   to air
+        set {_p}'s boots      to air
+        set {_p}'s offhand tool to totem of undying
+
+    else if {_mode} is "diamondsmp":
+        set {_p}'s helmet     to netherite helmet of protection 4, unbreaking 3, mending
+        set {_p}'s chestplate to netherite chestplate of protection 4, unbreaking 3, mending
+        set {_p}'s leggings   to netherite leggings of protection 4, unbreaking 3, mending
+        set {_p}'s boots      to netherite boots of protection 4, unbreaking 3, mending
+        set {_shield} to shield
+        enchant {_shield} with unbreaking 3
+        enchant {_shield} with mending 1
+        set {_p}'s offhand tool to {_shield}
+
+    else if {_mode} is "diamondvanilla":
+        set {_p}'s helmet     to diamond helmet of protection 4, unbreaking 3
+        set {_p}'s chestplate to diamond chestplate of protection 4, unbreaking 3
+        set {_p}'s leggings   to diamond leggings of protection 4, unbreaking 3
+        set {_p}'s boots      to diamond boots of protection 4, unbreaking 3
+        set {_p}'s offhand tool to totem of undying
+
+# ============================================================
+#  GIVE KIT — default (set slot) + armour
+# ============================================================
+
+# ============================================================
+#  GIVE KIT — writes directly to inventory, no list passing
+# ============================================================
+
+function subGiveKit(p: player, mode: text):
+    subClearForDuel({_p})
+    subWriteDefaultKitToPlayer({_p}, {_mode})
+    subApplyDefaultArmourAndOffhand({_p}, {_mode})
+
+function subWriteDefaultKitToPlayer(p: player, mode: text):
+    if {_mode} is "cartpvp":
+        set slot 0 of {_p}'s inventory to minecart with tnt
+        set slot 1 of {_p}'s inventory to 64 of rail
+        set {_sword} to netherite sword
+        enchant {_sword} with sharpness 5
+        enchant {_sword} with unbreaking 3
+        enchant {_sword} with mending 1
+        enchant {_sword} with fire aspect 2
+        enchant {_sword} with looting 3
+        enchant {_sword} with sweeping edge 3
+        set slot 2 of {_p}'s inventory to {_sword}
+        set slot 3 of {_p}'s inventory to 16 of ender pearl
+        set slot 4 of {_p}'s inventory to 64 of cherry log
+        set {_crossbow} to crossbow
+        enchant {_crossbow} with quick charge 3
+        enchant {_crossbow} with unbreaking 3
+        enchant {_crossbow} with mending 1
+        enchant {_crossbow} with piercing 4
+        set slot 5 of {_p}'s inventory to {_crossbow}
+        set {_fns} to flint and steel
+        enchant {_fns} with unbreaking 3
+        enchant {_fns} with mending 1
+        set slot 6 of {_p}'s inventory to {_fns}
+        set slot 7 of {_p}'s inventory to 64 of cobweb
+        set slot 8 of {_p}'s inventory to 64 of golden apple
+        set slot 9  of {_p}'s inventory to 64 of arrow
+        set slot 10 of {_p}'s inventory to 16 of ender pearl
+        set slot 11 of {_p}'s inventory to minecart with tnt
+        set slot 12 of {_p}'s inventory to minecart with tnt
+        set slot 13 of {_p}'s inventory to minecart with tnt
+        set slot 14 of {_p}'s inventory to minecart with tnt
+        set slot 15 of {_p}'s inventory to splash potion of strong strength
+        set slot 16 of {_p}'s inventory to splash potion of strong speed
+        set slot 17 of {_p}'s inventory to splash potion of fire resistance
+        set slot 18 of {_p}'s inventory to red shulker box
+        set slot 19 of {_p}'s inventory to 16 of ender pearl
+        set slot 20 of {_p}'s inventory to minecart with tnt
+        set slot 21 of {_p}'s inventory to minecart with tnt
+        set slot 22 of {_p}'s inventory to minecart with tnt
+        set slot 23 of {_p}'s inventory to minecart with tnt
+        set slot 24 of {_p}'s inventory to splash potion of strong strength
+        set slot 25 of {_p}'s inventory to splash potion of strong speed
+        set slot 26 of {_p}'s inventory to 64 of experience bottle
+        set slot 27 of {_p}'s inventory to red shulker box
+        set slot 28 of {_p}'s inventory to 16 of ender pearl
+        set {_pick} to netherite pickaxe
+        enchant {_pick} with efficiency 5
+        enchant {_pick} with unbreaking 3
+        enchant {_pick} with mending 1
+        enchant {_pick} with fortune 3
+        set slot 29 of {_p}'s inventory to {_pick}
+        set slot 30 of {_p}'s inventory to 64 of firework rocket
+        set {_elytra} to elytra
+        enchant {_elytra} with unbreaking 3
+        enchant {_elytra} with mending 1
+        set slot 31 of {_p}'s inventory to {_elytra}
+        set {_bow} to bow
+        enchant {_bow} with power 5
+        enchant {_bow} with unbreaking 3
+        enchant {_bow} with mending 1
+        enchant {_bow} with flame 1
+        enchant {_bow} with punch 2
+        set slot 32 of {_p}'s inventory to {_bow}
+        set slot 33 of {_p}'s inventory to splash potion of strong strength
+        set slot 34 of {_p}'s inventory to splash potion of strong speed
+        set slot 35 of {_p}'s inventory to 64 of golden apple
+
+    else if {_mode} is "speed":
+        set {_dsword} to diamond sword
+        enchant {_dsword} with sharpness 5
+        enchant {_dsword} with unbreaking 3
+        enchant {_dsword} with mending 1
+        enchant {_dsword} with fire aspect 2
+        enchant {_dsword} with looting 3
+        enchant {_dsword} with sweeping edge 3
+        set slot 0 of {_p}'s inventory to {_dsword}
+
+    else if {_mode} is "bow":
+        set {_ibow} to bow
+        enchant {_ibow} with power 5
+        enchant {_ibow} with unbreaking 3
+        enchant {_ibow} with mending 1
+        enchant {_ibow} with flame 1
+        enchant {_ibow} with punch 2
+        enchant {_ibow} with infinity 1
+        set slot 0 of {_p}'s inventory to {_ibow}
+        set slot 1 of {_p}'s inventory to 1 of arrow
+
+    else if {_mode} is "creeper":
+        set {_ssword} to stone sword
+        enchant {_ssword} with sharpness 5
+        enchant {_ssword} with unbreaking 3
+        enchant {_ssword} with mending 1
+        enchant {_ssword} with fire aspect 2
+        enchant {_ssword} with knockback 2
+        enchant {_ssword} with looting 3
+        enchant {_ssword} with sweeping edge 3
+        set slot 0 of {_p}'s inventory to {_ssword}
+        set slot 1 of {_p}'s inventory to 64 of creeper spawn egg
+        set slot 2 of {_p}'s inventory to totem of undying
+        set {_ccbow} to crossbow
+        enchant {_ccbow} with quick charge 3
+        enchant {_ccbow} with unbreaking 3
+        enchant {_ccbow} with mending 1
+        enchant {_ccbow} with piercing 4
+        set slot 3 of {_p}'s inventory to {_ccbow}
+        set slot 4 of {_p}'s inventory to 24 of tnt
+        set slot 5 of {_p}'s inventory to 16 of ender pearl
+        set slot 6 of {_p}'s inventory to 64 of golden apple
+        set slot 7 of {_p}'s inventory to shield
+        set slot 8 of {_p}'s inventory to 64 of cobblestone
+        set slot 9  of {_p}'s inventory to 10 of tipped arrow of harming
+        set slot 10 of {_p}'s inventory to 64 of creeper spawn egg
+        set slot 13 of {_p}'s inventory to golden pickaxe
+        set slot 18 of {_p}'s inventory to 10 of tipped arrow of slowness
+        set slot 19 of {_p}'s inventory to 64 of creeper spawn egg
+        set {_cbow} to bow
+        enchant {_cbow} with flame 1
+        enchant {_cbow} with power 5
+        set slot 30 of {_p}'s inventory to {_cbow}
+        set slot 22 of {_p}'s inventory to compass
+        set slot 31 of {_p}'s inventory to 32 of cobweb
+        set slot 32 of {_p}'s inventory to 16 of ender pearl
+        set {_saxe} to stone axe
+        enchant {_saxe} with sharpness 5
+        enchant {_saxe} with unbreaking 3
+        enchant {_saxe} with mending 1
+        enchant {_saxe} with efficiency 5
+        set slot 33 of {_p}'s inventory to {_saxe}
+        set slot 26 of {_p}'s inventory to 64 of cobblestone
+        set slot 27 of {_p}'s inventory to 1 of water bucket
+        set slot 28 of {_p}'s inventory to 64 of creeper spawn egg
+        set slot 35 of {_p}'s inventory to 64 of cobblestone
+
+    else if {_mode} is "trident":
+        set {_trid1} to trident
+        enchant {_trid1} with riptide 3
+        enchant {_trid1} with unbreaking 3
+        enchant {_trid1} with mending 1
+        set slot 0 of {_p}'s inventory to trident of riptide 3 and unbreaking 3 and mending
+        set {_trid2} to trident of riptide 3 and unbreaking 3 and mending
+        enchant {_trid2} with loyalty 3
+        enchant {_trid2} with unbreaking 3
+        enchant {_trid2} with mending 1
+        enchant {_trid2} with channeling 1
+        set slot 1 of {_p}'s inventory to trident of loyalty 3 and unbreaking 3 and mending and channeling
+        set slot 2 of {_p}'s inventory to totem of undying
+        set slot 3 of {_p}'s inventory to pufferfish bucket
+        set {_ghoe} to golden hoe
+        enchant {_ghoe} with efficiency 5
+        enchant {_ghoe} with unbreaking 3
+        enchant {_ghoe} with mending 1
+        set slot 4 of {_p}'s inventory to {_ghoe}
+        set slot 5 of {_p}'s inventory to water bucket
+        set slot 6 of {_p}'s inventory to 6 of golden apple
+        set slot 7 of {_p}'s inventory to 8 of cobweb
+        set slot 8 of {_p}'s inventory to 6 of sponge
+        set slot 32 of {_p}'s inventory to water bucket
+        set slot 23 of {_p}'s inventory to water bucket
+        set slot 14 of {_p}'s inventory to water bucket
+        set slot 30 of {_p}'s inventory to pufferfish bucket
+        set slot 21 of {_p}'s inventory to pufferfish bucket
+        set {_shears} to shears
+        enchant {_shears} with unbreaking 3
+        enchant {_shears} with mending 1
+        enchant {_shears} with efficiency 5
+        set slot 22 of {_p}'s inventory to {_shears}
+        set {_gpick} to golden pickaxe
+        enchant {_gpick} with efficiency 5
+        enchant {_gpick} with unbreaking 3
+        enchant {_gpick} with mending 1
+        enchant {_gpick} with fortune 3
+        set slot 31 of {_p}'s inventory to {_gpick}
+        set slot 35 of {_p}'s inventory to 64 of cobblestone
+
+    else if {_mode} is "elytra":
+        set {_nsword} to netherite sword
+        enchant {_nsword} with sharpness 5
+        enchant {_nsword} with fire aspect 2
+        enchant {_nsword} with unbreaking 3
+        enchant {_nsword} with mending 1
+        enchant {_nsword} with looting 3
+        enchant {_nsword} with sweeping edge 3
+        set slot 0 of {_p}'s inventory to {_nsword}
+        set {_mcbow} to crossbow
+        enchant {_mcbow} with quick charge 3
+        enchant {_mcbow} with unbreaking 3
+        enchant {_mcbow} with mending 1
+        enchant {_mcbow} with piercing 4
+        set slot 1 of {_p}'s inventory to {_mcbow}
+        set slot 2 of {_p}'s inventory to 64 of golden apple
+        set {_mbow} to bow
+        enchant {_mbow} with power 5
+        enchant {_mbow} with flame 1
+        enchant {_mbow} with punch 2
+        enchant {_mbow} with unbreaking 3
+        enchant {_mbow} with mending 1
+        set slot 3 of {_p}'s inventory to {_mbow}
+        set slot 4 of {_p}'s inventory to 24 of firework rocket
+        set slot 5 of {_p}'s inventory to 16 of ender pearl
+        set {_mcbow2} to crossbow
+        enchant {_mcbow2} with quick charge 3
+        enchant {_mcbow2} with unbreaking 3
+        enchant {_mcbow2} with mending 1
+        enchant {_mcbow2} with piercing 4
+        set slot 6 of {_p}'s inventory to {_mcbow2}
+        set {_mshield} to shield
+        enchant {_mshield} with unbreaking 3
+        enchant {_mshield} with mending 1
+        set slot 7 of {_p}'s inventory to {_mshield}
+        set slot 8 of {_p}'s inventory to splash potion of strong strength
+        set slot 9  of {_p}'s inventory to 64 of tipped arrow of harming
+        set slot 10 of {_p}'s inventory to 1 of arrow
+        set slot 12 of {_p}'s inventory to totem of undying
+        set slot 13 of {_p}'s inventory to totem of undying
+        set slot 14 of {_p}'s inventory to totem of undying
+        set slot 22 of {_p}'s inventory to 12 of firework rocket
+        set slot 31 of {_p}'s inventory to 16 of firework rocket
+        set slot 23 of {_p}'s inventory to 64 of cobweb
+        set slot 30 of {_p}'s inventory to 64 of wind charge
+        set slot 15 of {_p}'s inventory to splash potion of strong strength
+        set slot 16 of {_p}'s inventory to splash potion of strong strength
+        set slot 17 of {_p}'s inventory to splash potion of strong strength
+        set slot 24 of {_p}'s inventory to splash potion of strong strength
+        set slot 25 of {_p}'s inventory to splash potion of strong strength
+        set slot 26 of {_p}'s inventory to splash potion of strong strength
+        set slot 33 of {_p}'s inventory to splash potion of strong strength
+        set slot 34 of {_p}'s inventory to splash potion of strong strength
+        set slot 35 of {_p}'s inventory to splash potion of strong strength
+        set slot 32 of {_p}'s inventory to 64 of oak planks
+        set slot 27 of {_p}'s inventory to netherite axe of sharpness 5 and mending and unbreaking 3 and looting 3 and sweeping edge 3
+
+    else if {_mode} is "diamondsmp":
+        set {_dsword} to diamond sword
+        enchant {_dsword} with sharpness 5
+        enchant {_dsword} with fire aspect 2
+        enchant {_dsword} with unbreaking 3
+        set {_daxe} to diamond axe
+        enchant {_daxe} with sharpness 5
+        enchant {_daxe} with unbreaking 3
+        set {_npick} to netherite pickaxe
+        enchant {_npick} with silk touch 1
+        enchant {_npick} with mending 1
+        enchant {_npick} with efficiency 5
+        enchant {_npick} with unbreaking 3
+        set slot 0  of {_p}'s inventory to {_dsword}
+        set slot 1  of {_p}'s inventory to {_daxe}
+        set slot 2  of {_p}'s inventory to 64 of experience bottle
+        set slot 3  of {_p}'s inventory to 64 of golden apple
+        set slot 4  of {_p}'s inventory to 64 of golden apple
+        set slot 5  of {_p}'s inventory to {_npick}
+        set slot 6  of {_p}'s inventory to 64 of oak log
+        set slot 7  of {_p}'s inventory to 64 of cobweb
+        set slot 8  of {_p}'s inventory to water bucket
+        set slot 9  of {_p}'s inventory to water bucket
+        set slot 10 of {_p}'s inventory to water bucket
+        set slot 11 of {_p}'s inventory to 64 of experience bottle
+        set slot 12 of {_p}'s inventory to 64 of ender pearl
+        set slot 13 of {_p}'s inventory to 64 of chorus fruit
+        set slot 14 of {_p}'s inventory to totem of undying
+        set slot 15 of {_p}'s inventory to splash potion of strong strength
+        set slot 16 of {_p}'s inventory to splash potion of strong strength
+        set slot 17 of {_p}'s inventory to splash potion of strong strength
+        set slot 18 of {_p}'s inventory to splash potion of strong strength
+        set slot 19 of {_p}'s inventory to splash potion of strong strength
+        set slot 20 of {_p}'s inventory to splash potion of strong strength
+        set slot 21 of {_p}'s inventory to splash potion of strong strength
+        set slot 22 of {_p}'s inventory to splash potion of strong strength
+        set slot 23 of {_p}'s inventory to splash potion of strong strength
+        set slot 24 of {_p}'s inventory to splash potion of strong strength
+        set slot 25 of {_p}'s inventory to splash potion of strong strength
+        set slot 26 of {_p}'s inventory to splash potion of strong strength
+        set slot 27 of {_p}'s inventory to splash potion of strong strength
+        set slot 28 of {_p}'s inventory to splash potion of strong strength
+        set slot 29 of {_p}'s inventory to splash potion of strong strength
+        set slot 30 of {_p}'s inventory to splash potion of strong strength
+        set slot 31 of {_p}'s inventory to splash potion of speed
+        set slot 32 of {_p}'s inventory to splash potion of speed
+        set slot 33 of {_p}'s inventory to splash potion of speed
+        set slot 34 of {_p}'s inventory to splash potion of long fire resistance
+        set slot 35 of {_p}'s inventory to splash potion of long fire resistance
+
+    else if {_mode} is "diamondvanilla":
+        set {_dvsword} to diamond sword
+        enchant {_dvsword} with sharpness 5
+        enchant {_dvsword} with unbreaking 3
+        enchant {_dvsword} with mending 1
+        enchant {_dvsword} with fire aspect 2
+        enchant {_dvsword} with looting 3
+        enchant {_dvsword} with sweeping edge 3
+        set {_dvpick} to diamond pickaxe
+        enchant {_dvpick} with efficiency 5
+        enchant {_dvpick} with unbreaking 3
+        enchant {_dvpick} with mending 1
+        set slot 0 of {_p}'s inventory to 64 of end crystal
+        set slot 1 of {_p}'s inventory to 64 of obsidian
+        set slot 2 of {_p}'s inventory to splash potion of turtle master
+        set slot 3 of {_p}'s inventory to {_dvsword}
+        set slot 4 of {_p}'s inventory to 16 of ender pearl
+        set slot 5 of {_p}'s inventory to {_dvpick}
+        set slot 6 of {_p}'s inventory to splash potion of regeneration
+        set slot 7 of {_p}'s inventory to totem of undying
+        set slot 8 of {_p}'s inventory to 64 of golden apple
+        set slot 9  of {_p}'s inventory to 64 of ender pearl
+        set slot 10 of {_p}'s inventory to 64 of ender pearl
+        set slot 11 of {_p}'s inventory to 64 of experience bottle
+        set slot 12 of {_p}'s inventory to totem of undying
+        set slot 13 of {_p}'s inventory to totem of undying
+        set slot 14 of {_p}'s inventory to totem of undying
+        set slot 15 of {_p}'s inventory to totem of undying
+        set slot 16 of {_p}'s inventory to splash potion of regeneration
+        set slot 17 of {_p}'s inventory to splash potion of turtle master
+        set slot 18 of {_p}'s inventory to 64 of ender pearl
+        set slot 19 of {_p}'s inventory to 64 of ender pearl
+        set slot 20 of {_p}'s inventory to 64 of experience bottle
+        set slot 21 of {_p}'s inventory to totem of undying
+        set slot 22 of {_p}'s inventory to totem of undying
+        set slot 23 of {_p}'s inventory to totem of undying
+        set slot 24 of {_p}'s inventory to splash potion of regeneration
+        set slot 25 of {_p}'s inventory to splash potion of regeneration
+        set slot 26 of {_p}'s inventory to splash potion of turtle master
+        set slot 27 of {_p}'s inventory to 64 of end crystal
+        set slot 28 of {_p}'s inventory to 64 of obsidian
+        set slot 29 of {_p}'s inventory to 64 of experience bottle
+        set slot 33 of {_p}'s inventory to splash potion of turtle master
+        set slot 34 of {_p}'s inventory to splash potion of regeneration
+        set slot 35 of {_p}'s inventory to splash potion of turtle master
+        set slot 30 of {_p}'s inventory to totem of undying
+        set slot 31 of {_p}'s inventory to totem of undying
+        set slot 32 of {_p}'s inventory to totem of undying
+
+# ============================================================
+#  GIVE KIT TO PLAYER — respects custom kit
+# ============================================================
+
+function subGiveKitToPlayer(p: player, mode: text):
+    set {_uuid} to "%uuid of {_p}%"
+    subClearForDuel({_p})
+    if subHasCustomKit({_uuid}, {_mode}) is true:
+        loop integers from 0 to 35:
+            set {_item} to subGetCustomKitItem({_uuid}, {_mode}, loop-number)
+            if {_item} is not air:
+                set slot loop-number of {_p}'s inventory to {_item}
+        subApplyDefaultArmourAndOffhand({_p}, {_mode})
+    else:
+        subGiveKit({_p}, {_mode})
+
+# ============================================================
+#  KIT EDITOR HELPERS
+# ============================================================
+
+function subHasCustomKit(uuid: text, mode: text) :: boolean:
+    if {sub.editkit.%{_mode}%.%{_uuid}%.hasCustom} is true:
+        return true
+    return false
+
+function subGetCustomKitItem(uuid: text, mode: text, slot: number) :: item:
+    if {sub.editkit.%{_mode}%.%{_uuid}%.%{_slot}%} is set:
+        return {sub.editkit.%{_mode}%.%{_uuid}%.%{_slot}%}
+    return air
+
+# ============================================================
+#  GIVE KIT TO PLAYER — respects custom kit
+# ============================================================
+# ============================================================
+#  KICK — same as quit, treated as disconnect
+# ============================================================
+on kick:
+    if {sub.duel.pending::%player%} is set:
+        delete {sub.duel.pending::%player%}
+    delete {sub.duel.awaitingft::%player%}
+    delete {sub.duel.pendingmode::%player%}
+    delete {sub.duel.pendingopponent::%player%}
+
+    if {sub.duel.active::%player%} is true:
+        set {_loser}     to player
+        set {_winner}    to {sub.duel.opponent::%player%}
+        set {_arena}     to {sub.duel.arena::%player%}
+        set {_arenaType} to {sub.duel.arenatype::%player%}
+        set {_type}      to {sub.duel.type::%player%}
+
+        if {_winner} is set:
+            send "{@prefix} &e%{_loser}% &cwas kicked — &e%{_winner}% &awins the series!" to {_winner}
+            subApplyDuelMMR({_winner}, {_loser}, {_type})
+            subRestorePlayer({_winner})
+            subCleanDuelVars({_winner})
+            subCleanRoundVars({_winner})
+            delete {sub.duel.inroundbreak::%{_winner}%}
+
+        set {sub.duel.disconnected::%player%} to true
+
+        delete {sub.duel.active::%player%}
+        delete {sub.duel.opponent::%player%}
+        delete {sub.duel.type::%player%}
+        delete {sub.duel.arena::%player%}
+        delete {sub.duel.arenatype::%player%}
+        delete {sub.duel.inroundbreak::%player%}
+        delete {sub.duel.roundwins::%player%}
+        delete {sub.duel.ft::%player%}
+
+        if {_arena} is set:
+            if {_arenaType} is "big":
+                delete {sub.arena.big.%{_arena}%.inuse}
+            else:
+                delete {sub.arena.small.%{_arena}%.inuse}
+
+    call subLeaveAllQueues(player)
+# ============================================================
+#  ROUNDS HELPERS
+# ============================================================
+
+function subStartNextRound(p1: player, p2: player):
+    set {_arena}     to {sub.duel.arena::%{_p1}%}
+    set {_arenaType} to {sub.duel.arenatype::%{_p1}%}
+    set {_mode}      to {sub.duel.type::%{_p1}%}
+    set {_p1W}       to {sub.duel.roundwins::%{_p1}%}
+    set {_p2W}       to {sub.duel.roundwins::%{_p2}%}
+    set {_ft}        to {sub.duel.ft::%{_p1}%}
+
+    if {_arenaType} is "big":
+        set {_spawnP1} to {sub.arena.big.%{_arena}%.p1}
+        set {_spawnP2} to {sub.arena.big.%{_arena}%.p2}
+        resetBigArena({_arena})
+    else:
+        set {_spawnP1} to {sub.arena.small.%{_arena}%.p1}
+        set {_spawnP2} to {sub.arena.small.%{_arena}%.p2}
+
+    teleport {_p1} to {_spawnP1}
+    teleport {_p2} to {_spawnP2}
+
+    subGiveKitToPlayer({_p1}, {_mode})
+    subGiveKitToPlayer({_p2}, {_mode})
+
+    set {sub.duel.active::%{_p1}%} to true
+    set {sub.duel.active::%{_p2}%} to true
+
+    send "" to {_p1}
+    send "&b&lRound starting! &7Score: &a%{_p1W}%&7-&c%{_p2W}% &7(FT%{_ft}%)" to {_p1}
+    send "" to {_p1}
+    send "" to {_p2}
+    send "&b&lRound starting! &7Score: &a%{_p2W}%&7-&c%{_p1W}% &7(FT%{_ft}%)" to {_p2}
+    send "" to {_p2}
+
+# ============================================================
+#  COMMAND: /deleteduelvariable
+# ============================================================
+command /deleteduelvariable:
+    permission: op
+    trigger:
+        delete {sub.duel.request::%player%}
+        
+# ============================================================
+#  COMMAND: /subduel <player>
+# ============================================================
+command /subduel <player>:
+    trigger:
+        if arg-1 is player:
+            send "{@prefix} &cYou cannot duel yourself." to player
+            stop
+        if arg-1 is not online:
+            send "{@prefix} &cPlayer not online." to player
+            stop
+        if {sub.duel.active::%arg-1%} is true:
+            send "{@prefix} &cThat player is already in a sub duel." to player
+            stop
+        if {duel.active::%arg-1%} is true:
+            send "{@prefix} &cThat player is already in a duel." to player
+            stop
+        if {sub.duel.pending::%arg-1%} is set:
+            send "{@prefix} &cThat player already has a pending sub duel request." to player
+            stop
+        if {sub.duel.request::%player%} is set:
+            send "{@prefix} &cYou already have a pending sub duel request." to player
+            stop
+        if {sub.duel.active::%player%} is true:
+            send "{@prefix} &cYou are already in a sub duel." to player
+            stop
+        if {duel.active::%player%} is true:
+            send "{@prefix} &cYou are already in a duel." to player
+            stop
+
+        set {sub.duel.request::%player%}  to arg-1
+        set {sub.duel.pending::%arg-1%}   to player
+
+        send "{@prefix} &e%arg-1% &ahas been sent a sub duel request by &e%player%&a." to player
+        send "{@prefix} &e%player% &awants to sub duel you! Type &e/subacceptduel %player% &ato accept or &c/subdenyduel &cto deny." to arg-1
+
+        wait 30 seconds
+
+        if {sub.duel.pending::%arg-1%} is player:
+            delete {sub.duel.pending::%arg-1%}
+            delete {sub.duel.request::%player%}
+            send "{@prefix} &cYour sub duel request to &e%arg-1% &chas expired." to player
+
+# ============================================================
+#  COMMAND: /subacceptduel <player>
+# ============================================================
+command /subacceptduel <player>:
+    trigger:
+        if {sub.duel.pending::%player%} is not set:
+            send "{@prefix} &cYou have no pending sub duel request." to player
+            stop
+        if {sub.duel.pending::%player%} is not arg-1:
+            send "{@prefix} &cYou don't have a pending sub duel request from &e%arg-1%&c." to player
+            stop
+
+        set {_requester} to {sub.duel.pending::%player%}
+
+        if {_requester} is not online:
+            send "{@prefix} &cThe player who challenged you is no longer online." to player
+            delete {sub.duel.pending::%player%}
+            stop
+        if {sub.duel.active::%{_requester}%} is true:
+            send "{@prefix} &cThat player is now in a sub duel." to player
+            delete {sub.duel.pending::%player%}
+            stop
+        if {duel.active::%{_requester}%} is true:
+            send "{@prefix} &cThat player is now in a duel." to player
+            delete {sub.duel.pending::%player%}
+            stop
+        if {sub.duel.active::%player%} is true:
+            send "{@prefix} &cYou are already in a sub duel." to player
+            delete {sub.duel.pending::%player%}
+            stop
+        if {duel.active::%player%} is true:
+            send "{@prefix} &cYou are already in a duel." to player
+            delete {sub.duel.pending::%player%}
+            stop
+
+        delete {sub.duel.pending::%player%}
+
+        set {_reqUUID} to "%uuid of {_requester}%"
+        set {_accUUID} to "%uuid of player%"
+
+        set {sub.duel.pendingopponent.uuid::%{_reqUUID}%} to {_accUUID}
+        set {sub.duel.pendingopponent.uuid::%{_accUUID}%} to {_reqUUID}
+        set {sub.duel.pendingopponent::%{_requester}%}    to player
+        set {sub.duel.pendingopponent::%player%}          to {_requester}
+
+        set {_gui} to chest inventory with 4 rows named "&bSub: Select Kit"
+
+        set slot 11  of {_gui} to minecart with tnt named "&6CartPVP"
+        set slot 12  of {_gui} to diamond sword named "&fSpeed"
+        set slot 13  of {_gui} to bow named "&7Bow"
+        set slot 14  of {_gui} to creeper spawn egg named "&2Creeper"
+        set slot 15  of {_gui} to trident named "&3Trident"
+        set slot 20  of {_gui} to elytra named "&bElytra"
+        set slot 21  of {_gui} to diamond chestplate named "&9Diamond SMP"
+        set slot 22  of {_gui} to diamond helmet named "&dDiamond Vanilla"
+        set slot 8  of {_gui} to paper named "&eSet Round Count &7(click)"
+
+        send "{@prefix} &e%player% &aaccepted the sub duel! Select a kit, then set a round count." to {_requester}
+        send "{@prefix} &aSelect a kit, then set a round count for the sub duel!" to player
+
+        open {_gui} to {_requester}
+        set {sub.duel.setup::%{_requester}%} to true
+
+# ============================================================
+#  COMMAND: /subdenyduel
+# ============================================================
+command /subdenyduel:
+    trigger:
+        if {sub.duel.pending::%player%} is not set:
+            send "{@prefix} &cYou have no pending sub duel request." to player
+            stop
+
+        set {_requester} to {sub.duel.pending::%player%}
+        delete {sub.duel.pending::%player%}
+        delete {sub.duel.request::%{_requester}%}
+
+        send "{@prefix} &e%player% &cdenied your sub duel request." to {_requester}
+        send "{@prefix} &cYou denied the sub duel request." to player
+
+# ============================================================
+#  COMMAND: /subendduel — forfeiter treated as loser
+# ============================================================
+command /subendduel:
+    trigger:
+        if {sub.duel.active::%player%} is not true:
+            send "{@prefix} &cYou are not in a sub duel." to player
+            stop
+
+        set {_loser}     to player
+        set {_winner}    to {sub.duel.opponent::%player%}
+        set {_type}      to {sub.duel.type::%player%}
+        set {_arena}     to {sub.duel.arena::%player%}
+        set {_arenaType} to {sub.duel.arenatype::%player%}
+
+        send "{@prefix} &e%{_loser}% &chas forfeited the sub duel." to {_loser}
+
+        if {_winner} is a player:
+            subApplyDuelMMR({_winner}, {_loser}, {_type})
+            send "{@prefix} &e%{_loser}% &cforfeited — &e%{_winner}% &awins the series!" to {_winner}
+
+        subRestorePlayer({_loser})
+        subCleanDuelVars({_loser})
+        subCleanRoundVars({_loser})
+
+        if {_winner} is set:
+            subRestorePlayer({_winner})
+            subCleanDuelVars({_winner})
+            subCleanRoundVars({_winner})
+
+        if {_arena} is set:
+            if {_arenaType} is "big":
+                delete {sub.arena.big.%{_arena}%.inuse}
+            else:
+                delete {sub.arena.small.%{_arena}%.inuse}
+
+# ============================================================
+#  GUI INVENTORY CLOSE — Kit selection cancelled
+# ============================================================
+on inventory close:
+    if name of event-inventory is "&bSub: Select Kit":
+        if {sub.duel.setup::%player%} is true:
+            delete {sub.duel.setup::%player%}
+            if {sub.duel.awaitingft::%player%} is true:
+                stop
+            set {_p2} to {sub.duel.pendingopponent::%player%}
+            delete {sub.duel.pendingmode::%player%}
+            if {_p2} is set:
+                set {_myUUID}  to "%uuid of player%"
+                set {_oppUUID} to "%uuid of {_p2}%"
+                delete {sub.duel.pendingopponent::%player%}
+                delete {sub.duel.pendingopponent::%{_p2}%}
+                delete {sub.duel.pendingopponent.uuid::%{_myUUID}%}
+                delete {sub.duel.pendingopponent.uuid::%{_oppUUID}%}
+                delete {sub.duel.request::%player%}
+                if {_p2} is online:
+                    send "{@prefix} &e%player% &cclosed the kit selection — sub duel cancelled." to {_p2}
+            send "{@prefix} &cSub duel cancelled — you closed the kit selection menu." to player
+
+# ============================================================
+#  GUI CLICK — Kit selection
+# ============================================================
+on inventory click:
+    if name of event-inventory is "&bSub: Select Kit":
+        cancel event
+        if event-item is air:
+            stop
+        set {_p1} to player
+        set {_p2} to {sub.duel.pendingopponent::%player%}
+        if {_p2} is not set:
+            send "{@prefix} &cSub duel setup error — opponent not found." to {_p1}
+            close {_p1}'s inventory
+            stop
+        if {_p2} is not online:
+            send "{@prefix} &cPlayer went offline." to {_p1}
+            set {_p1UUID} to "%uuid of {_p1}%"
+            set {_p2UUID} to "%uuid of {_p2}%"
+            delete {sub.duel.pendingopponent::%{_p1}%}
+            delete {sub.duel.pendingopponent.uuid::%{_p1UUID}%}
+            delete {sub.duel.pendingopponent.uuid::%{_p2UUID}%}
+            close {_p1}'s inventory
+            stop
+        if {sub.duel.active::%{_p1}%} is true:
+            close {_p1}'s inventory
+            stop
+        if {sub.duel.active::%{_p2}%} is true:
+            send "{@prefix} &cThe other player is already in a sub duel." to {_p1}
+            close {_p1}'s inventory
+            stop
+        set {_n} to name of event-item
+        if {_n} is "&6CartPVP":
+            set {sub.duel.pendingmode::%{_p1}%} to "cartpvp"
+            send "{@prefix} &aKit: &6CartPVP &7selected. Now set the round count." to {_p1}
+            stop
+        else if {_n} is "&fSpeed":
+            set {sub.duel.pendingmode::%{_p1}%} to "speed"
+            send "{@prefix} &aKit: &fSpeed &7selected. Now set the round count." to {_p1}
+            stop
+        else if {_n} is "&7Bow":
+            set {sub.duel.pendingmode::%{_p1}%} to "bow"
+            send "{@prefix} &aKit: &7Bow &7selected. Now set the round count." to {_p1}
+            stop
+        else if {_n} is "&2Creeper":
+            set {sub.duel.pendingmode::%{_p1}%} to "creeper"
+            send "{@prefix} &aKit: &2Creeper &7selected. Now set the round count." to {_p1}
+            stop
+        else if {_n} is "&3Trident":
+            set {sub.duel.pendingmode::%{_p1}%} to "trident"
+            send "{@prefix} &aKit: &3Trident &7selected. Now set the round count." to {_p1}
+            stop
+        else if {_n} is "&bElytra":
+            set {sub.duel.pendingmode::%{_p1}%} to "elytra"
+            send "{@prefix} &aKit: &bElytra &7selected. Now set the round count." to {_p1}
+            stop
+        else if {_n} is "&9Diamond SMP":
+            set {sub.duel.pendingmode::%{_p1}%} to "diamondsmp"
+            send "{@prefix} &aKit: &9Diamond SMP &7selected. Now set the round count." to {_p1}
+            stop
+        else if {_n} is "&dDiamond Vanilla":
+            set {sub.duel.pendingmode::%{_p1}%} to "diamondvanilla"
+            send "{@prefix} &aKit: &dDiamond Vanilla &7selected. Now set the round count." to {_p1}
+            stop
+        else if {_n} is "&eSet Round Count &7(click)":
+            if {sub.duel.pendingmode::%{_p1}%} is not set:
+                send "{@prefix} &cSelect a kit first." to {_p1}
+                stop
+            set {sub.duel.awaitingft::%{_p1}%} to true
+            delete {sub.duel.setup::%player%}
+            close {_p1}'s inventory
+            send "{@prefix} &eType a number &7(1-15) &ein chat to set the round count. Type &ccancel &eto abort." to {_p1}
+            stop
+
+# ============================================================
+#  CHAT — FT input + admin /subsetmmr input
+# ============================================================
+on chat:
+    if {sub.duel.awaitingft::%player%} is true:
+        cancel event
+
+        if message is "cancel":
+            delete {sub.duel.awaitingft::%player%}
+            delete {sub.duel.pendingmode::%player%}
+            set {_myUUID}  to "%uuid of player%"
+            set {_oppUUID} to {sub.duel.pendingopponent.uuid::%{_myUUID}%}
+            if {_oppUUID} is set:
+                set {_opp} to {sub.duel.pendingopponent::%player%}
+                delete {sub.duel.pendingopponent::%player%}
+                delete {sub.duel.pendingopponent.uuid::%{_myUUID}%}
+                delete {sub.duel.pendingopponent.uuid::%{_oppUUID}%}
+                if {_opp} is set:
+                    if {_opp} is online:
+                        delete {sub.duel.pendingopponent::%{_opp}%}
+                        send "{@prefix} &e%player% &ccancelled the sub duel setup." to {_opp}
+            send "{@prefix} &cSub duel setup cancelled." to player
+            stop
+
+        set {_p1}     to player
+        set {_myUUID} to "%uuid of {_p1}%"
+
+        set {_oppUUID} to {sub.duel.pendingopponent.uuid::%{_myUUID}%}
+        if {_oppUUID} is not set:
+            delete {sub.duel.awaitingft::%{_p1}%}
+            delete {sub.duel.pendingmode::%{_p1}%}
+            send "{@prefix} &cOpponent data lost — sub duel cancelled." to {_p1}
+            stop
+
+        set {_p2} to {sub.duel.pendingopponent::%{_p1}%}
+        if {_p2} is not set:
+            delete {sub.duel.awaitingft::%{_p1}%}
+            delete {sub.duel.pendingmode::%{_p1}%}
+            delete {sub.duel.pendingopponent.uuid::%{_myUUID}%}
+            delete {sub.duel.pendingopponent.uuid::%{_oppUUID}%}
+            send "{@prefix} &cPlayer went offline." to {_p1}
+            stop
+        if {_p2} is not online:
+            delete {sub.duel.awaitingft::%{_p1}%}
+            delete {sub.duel.pendingmode::%{_p1}%}
+            delete {sub.duel.pendingopponent::%{_p1}%}
+            delete {sub.duel.pendingopponent.uuid::%{_myUUID}%}
+            delete {sub.duel.pendingopponent.uuid::%{_oppUUID}%}
+            send "{@prefix} &cPlayer went offline." to {_p1}
+            stop
+        if {sub.duel.pendingmode::%{_p1}%} is not set:
+            delete {sub.duel.awaitingft::%{_p1}%}
+            delete {sub.duel.pendingopponent::%{_p1}%}
+            delete {sub.duel.pendingopponent.uuid::%{_myUUID}%}
+            delete {sub.duel.pendingopponent.uuid::%{_oppUUID}%}
+            send "{@prefix} &cKit was deselected — please start over." to {_p1}
+            stop
+
+        set {_ft} to message parsed as integer
+        if {_ft} is not set:
+            send "{@prefix} &cInvalid number — type a number between 1 and 15." to {_p1}
+            stop
+        if {_ft} < 1:
+            send "{@prefix} &cMinimum round count is 1." to {_p1}
+            stop
+        if {_ft} > 15:
+            send "{@prefix} &cMaximum round count is 15." to {_p1}
+            stop
+
+        # All validated — clean up pending state
+        delete {sub.duel.awaitingft::%{_p1}%}
+        set {_mode} to {sub.duel.pendingmode::%{_p1}%}
+        delete {sub.duel.pendingmode::%{_p1}%}
+        delete {sub.duel.pendingopponent::%{_p1}%}
+        delete {sub.duel.pendingopponent::%{_p2}%}
+        delete {sub.duel.pendingopponent.uuid::%{_myUUID}%}
+        delete {sub.duel.pendingopponent.uuid::%{_oppUUID}%}
+        delete {sub.duel.request::%{_p1}%}
+
+        # ── ARENA ASSIGNMENT ──────────────────────────────────
+        if {_mode} is "elytra" or "cartpvp" or "trident" or "diamondsmp" or "diamondvanilla" or "creeper":
+            set {_arenaIdx} to subGetFreeBigArena()
+            if {_arenaIdx} is 0:
+                send "{@prefix} &cAll big arenas are in use. Please wait." to {_p1}
+                stop
+            set {_arenaType} to "big"
+            set {sub.arena.big.%{_arenaIdx}%.inuse} to true
+            set {_spawnP1} to {sub.arena.big.%{_arenaIdx}%.p1}
+            set {_spawnP2} to {sub.arena.big.%{_arenaIdx}%.p2}
+        else:
+            set {_arenaIdx} to subGetFreeSmallArena()
+            if {_arenaIdx} is 0:
+                send "{@prefix} &cAll arenas are in use. Please wait." to {_p1}
+                stop
+            set {_arenaType} to "small"
+            set {sub.arena.small.%{_arenaIdx}%.inuse} to true
+            set {_spawnP1} to {sub.arena.small.%{_arenaIdx}%.p1}
+            set {_spawnP2} to {sub.arena.small.%{_arenaIdx}%.p2}
+
+        # ── LINK OPPONENTS ────────────────────────────────────
+        set {sub.duel.opponent::%{_p1}%}   to {_p2}
+        set {sub.duel.opponent::%{_p2}%}   to {_p1}
+        set {sub.duel.type::%{_p1}%}       to {_mode}
+        set {sub.duel.type::%{_p2}%}       to {_mode}
+        set {sub.duel.arena::%{_p1}%}      to {_arenaIdx}
+        set {sub.duel.arena::%{_p2}%}      to {_arenaIdx}
+        set {sub.duel.arenatype::%{_p1}%}  to {_arenaType}
+        set {sub.duel.arenatype::%{_p2}%}  to {_arenaType}
+        set {sub.duel.ft::%{_p1}%}         to {_ft}
+        set {sub.duel.ft::%{_p2}%}         to {_ft}
+        set {sub.duel.roundwins::%{_p1}%}  to 0
+        set {sub.duel.roundwins::%{_p2}%}  to 0
+
+        subSaveDuelState({_p1}, {_p2})
+        subClearForDuel({_p1})
+        subClearForDuel({_p2})
+
+        teleport {_p1} to {_spawnP1}
+        teleport {_p2} to {_spawnP2}
+
+        if {_arenaType} is "big":
+            resetBigArena({_arenaIdx})
+
+        wait 5 ticks
+
+        subGiveKitToPlayer({_p1}, {_mode})
+        subGiveKitToPlayer({_p2}, {_mode})
+
+        set {sub.duel.active::%{_p1}%} to true
+        set {sub.duel.active::%{_p2}%} to true
+        heal {_p1}
+        heal {_p2}
+        execute console command "effect clear %{_p1}%"
+        execute console command "effect clear %{_p2}%"
+
+        send "{@prefix} &aThe sub duel has started! &7(FT%{_ft}%) Use &e/subendduel &ato forfeit." to {_p1}
+        send "{@prefix} &aThe sub duel has started! &7(FT%{_ft}%) Use &e/subendduel &ato forfeit." to {_p2}
+
+    # ── Admin /subsetmmr chat input ────────────────────────────
+    if {sub.setmmr.awaiting::%player%} is true:
+        cancel event
+        if message is "cancel":
+            delete {sub.setmmr.awaiting::%player%}
+            delete {sub.setmmr.mode::%player%}
+            delete {sub.setmmr.target::%player%}
+            send "&cCancelled." to player
+            stop
+        set {_input} to message parsed as integer
+        if {_input} is not set:
+            send "&cInvalid amount. Type a number or &ecancel&c." to player
+            stop
+        if {_input} < 0:
+            send "&cAmount cannot be negative." to player
+            stop
+        if {_input} > 9999:
+            send "&cAmount cannot exceed 9999." to player
+            stop
+        set {_target} to {sub.setmmr.target::%player%}
+        set {_mode}   to {sub.setmmr.mode::%player%}
+        set {_uuid}   to "%uuid of {_target}%"
+        set {sub.mmr.%{_mode}%::%{_uuid}%} to {_input}
+        set {sub.mmr.lastfight.%{_mode}%::%{_uuid}%} to now
+        if {sub.fights.%{_mode}%::%{_uuid}%} is not set:
+            set {sub.fights.%{_mode}%::%{_uuid}%} to 10
+        else if {sub.fights.%{_mode}%::%{_uuid}%} < 10:
+            set {sub.fights.%{_mode}%::%{_uuid}%} to 10
+        send "&aSet &e%name of {_target}%&a's &f%{_mode}%&a MMR to &f%{_input}%&a." to player
+        send "&b[SubDuels] &7An admin set your &f%{_mode}%&7 MMR to &f%{_input}%&7." to {_target}
+        delete {sub.setmmr.awaiting::%player%}
+        delete {sub.setmmr.mode::%player%}
+        delete {sub.setmmr.target::%player%}
+
+# ============================================================
+#  ACTION BAR
+# ============================================================
+every 4 ticks:
+    loop all players:
+        if {sub.duel.active::%loop-player%} is true:
+            set {_p}      to loop-player
+            set {_opp}    to {sub.duel.opponent::%{_p}%}
+            if {_opp} is not set:
+                stop
+            set {_myHp}    to health of {_p}
+            set {_oppHp}   to health of {_opp}
+            set {_myAbs}   to absorption amount of {_p} / 2
+            set {_oppAbs}  to absorption amount of {_opp} / 2
+            set {_myWins}  to {sub.duel.roundwins::%{_p}%}
+            set {_oppWins} to {sub.duel.roundwins::%{_opp}%}
+            set {_ft}      to {sub.duel.ft::%{_p}%}
+            if {_myWins} is not set:
+                set {_myWins} to 0
+            if {_oppWins} is not set:
+                set {_oppWins} to 0
+            set {_myDisplay}  to "&c%{_myHp}%&7/&c20"
+            set {_oppDisplay} to "&c%{_oppHp}%&7/&c20"
+            if {_myAbs} > 0:
+                set {_myDisplay}  to "%{_myDisplay}% &e(+%{_myAbs}%)"
+            if {_oppAbs} > 0:
+                set {_oppDisplay} to "%{_oppDisplay}% &e(+%{_oppAbs}%)"
+            send action bar "&aYou: %{_myDisplay}% &7[&a%{_myWins}%&7-&c%{_oppWins}%&7] FT%{_ft}%  &7|  &a%{_opp}%: %{_oppDisplay}%" to {_p}
+
+# ============================================================
+#  DEATH (DUEL) — round logic, MMR only on series win
+# ============================================================
+on death:
+    if {sub.duel.active::%victim%} is true:
+        clear drops
+        set {_loser}     to victim
+        set {_winner}    to {sub.duel.opponent::%{_loser}%}
+        set {_type}      to {sub.duel.type::%{_loser}%}
+        set {_arena}     to {sub.duel.arena::%{_loser}%}
+        set {_arenaType} to {sub.duel.arenatype::%{_loser}%}
+        set {_ft}        to {sub.duel.ft::%{_loser}%}
+
+        delete {sub.duel.active::%{_loser}%}
+
+        # ── TIE CHECK ─────────────────────────────────────────
+        if {sub.duel.active::%{_winner}%} is not true:
+            send "{@prefix} &eIt's a tie! Both players died at the same time." to {_loser}
+            if {_winner} is online:
+                send "{@prefix} &eIt's a tie! Both players died at the same time." to {_winner}
+            if {_arena} is set:
+                if {_arenaType} is "big":
+                    delete {sub.arena.big.%{_arena}%.inuse}
+                else:
+                    delete {sub.arena.small.%{_arena}%.inuse}
+            subCleanDuelVars({_loser})
+            subCleanRoundVars({_loser})
+            set {sub.duel.loser::%{_loser}%} to true
+            if {_winner} is online:
+                set {sub.duel.pendingwin::%{_winner}%} to true
+            stop
+
+        # ── ROUND WIN ─────────────────────────────────────────
+        delete {sub.duel.active::%{_winner}%}
+        add 1 to {sub.duel.roundwins::%{_winner}%}
+
+        set {_wWins} to {sub.duel.roundwins::%{_winner}%}
+        set {_lWins} to {sub.duel.roundwins::%{_loser}%}
+
+        # ── SERIES OVER? ──────────────────────────────────────
+        if {_wWins} >= {_ft}:
+            send "{@prefix} &e%{_winner}% &awon the series &a(%{_wWins}%-%{_lWins}%) against &e%{_loser}%&a!" to {_winner}
+            send "{@prefix} &cYou lost the series &7(%{_lWins}%-%{_wWins}%) against &e%{_winner}%&c!" to {_loser}
+
+            if {_winner} is a player:
+                if {_loser} is a player:
+                    subApplyDuelMMR({_winner}, {_loser}, {_type})
+
+            if {_arena} is set:
+                if {_arenaType} is "big":
+                    delete {sub.arena.big.%{_arena}%.inuse}
+                else:
+                    delete {sub.arena.small.%{_arena}%.inuse}
+
+            subCleanRoundVars({_winner})
+            subCleanRoundVars({_loser})
+            set {sub.duel.loser::%{_loser}%}      to true
+            set {sub.duel.pendingwin::%{_winner}%} to true
+
+        else:
+            # ── NEXT ROUND ────────────────────────────────────
+            send "" to {_winner}
+            send "&6&lRound over! &e%{_winner}% &awon that round. &7Score: &a%{_wWins}%&7-&c%{_lWins}% &7(FT%{_ft}%)" to {_winner}
+            send "" to {_winner}
+            send "" to {_loser}
+            send "&6&lRound over! &e%{_winner}% &awon that round. &7Score: &a%{_wWins}%&7-&c%{_lWins}% &7(FT%{_ft}%)" to {_loser}
+            send "" to {_loser}
+            heal {_winner}
+            execute console command "effect clear %{_winner}%"
+            set {sub.duel.inroundbreak::%{_winner}%} to true
+            set {sub.duel.inroundbreak::%{_loser}%}  to true
+            set {sub.duel.loser::%{_loser}%}          to true
+            set {sub.duel.pendingwin::%{_winner}%}    to true
+
+            loop 5 times:
+                set {_countdown} to 6 - loop-number
+                wait 20 ticks
+                if {_winner} is online:
+                    send action bar "&eNext round in &c%{_countdown}%&e..." to {_winner}
+                if {_loser} is online:
+                    send action bar "&eNext round in &c%{_countdown}%&e..." to {_loser}
+
+            if {_winner} is online:
+                if {_loser} is online:
+                    delete {sub.duel.inroundbreak::%{_winner}%}
+                    delete {sub.duel.inroundbreak::%{_loser}%}
+                    delete {sub.duel.loser::%{_loser}%}
+                    delete {sub.duel.pendingwin::%{_winner}%}
+                    subStartNextRound({_winner}, {_loser})
+                else:
+                    send "{@prefix} &cYour opponent disconnected — you win the series!" to {_winner}
+                    subApplyDuelMMR({_winner}, {_loser}, {_type})
+                    if {_arena} is set:
+                        if {_arenaType} is "big":
+                            delete {sub.arena.big.%{_arena}%.inuse}
+                        else:
+                            delete {sub.arena.small.%{_arena}%.inuse}
+                    subRestorePlayer({_winner})
+                    subCleanDuelVars({_winner})
+                    subCleanRoundVars({_winner})
+                    delete {sub.duel.inroundbreak::%{_winner}%}
+                    delete {sub.duel.pendingwin::%{_winner}%}
+
+every 3 ticks:
+    loop all players:
+        if {sub.duel.pendingwin::%loop-player%} is true:
+            if {sub.duel.inroundbreak::%loop-player%} is not true:
+                delete {sub.duel.pendingwin::%loop-player%}
+                subRestorePlayer(loop-player)
+                subCleanDuelVars(loop-player)
+
+# ============================================================
+#  RESPAWN — loser restore
+# ============================================================
+on respawn:
+    if {sub.duel.loser::%player%} is true:
+        if {sub.duel.inroundbreak::%player%} is true:
+            wait 2 ticks
+            heal player
+            feed player
+            stop
+        wait 2 ticks
+        subRestorePlayer(player)
+        subCleanDuelVars(player)
+        subCleanRoundVars(player)
+        delete {sub.duel.loser::%player%}
+
+# ============================================================
+#  QUIT — disconnecter treated as loser (series ends)
+# ============================================================
+on quit:
+    if {sub.duel.pending::%player%} is set:
+        delete {sub.duel.pending::%player%}
+    delete {sub.duel.awaitingft::%player%}
+    delete {sub.duel.pendingmode::%player%}
+    delete {sub.duel.pendingopponent::%player%}
+
+    if {sub.duel.active::%player%} is true:
+        set {_loser}     to player
+        set {_winner}    to {sub.duel.opponent::%player%}
+        set {_arena}     to {sub.duel.arena::%player%}
+        set {_arenaType} to {sub.duel.arenatype::%player%}
+        set {_type}      to {sub.duel.type::%player%}
+
+        if {_winner} is set:
+            send "{@prefix} &e%{_loser}% &cleft — &e%{_winner}% &awins the series!" to {_winner}
+            subApplyDuelMMR({_winner}, {_loser}, {_type})
+            subRestorePlayer({_winner})
+            subCleanDuelVars({_winner})
+            subCleanRoundVars({_winner})
+            delete {sub.duel.inroundbreak::%{_winner}%}
+
+        set {sub.duel.disconnected::%player%} to true
+
+        delete {sub.duel.active::%player%}
+        delete {sub.duel.opponent::%player%}
+        delete {sub.duel.type::%player%}
+        delete {sub.duel.arena::%player%}
+        delete {sub.duel.arenatype::%player%}
+        delete {sub.duel.inroundbreak::%player%}
+        delete {sub.duel.roundwins::%player%}
+        delete {sub.duel.ft::%player%}
+
+        if {_arena} is set:
+            if {_arenaType} is "big":
+                delete {sub.arena.big.%{_arena}%.inuse}
+            else:
+                delete {sub.arena.small.%{_arena}%.inuse}
+
+    # Leave queues on quit
+    call subLeaveAllQueues(player)
+
+# ============================================================
+#  REJOIN — restore disconnected player's inventory
+# ============================================================
+on join:
+    if {sub.duel.disconnected::%player%} is true:
+        delete {sub.duel.disconnected::%player%}
+        clear player's inventory
+        set player's helmet      to air
+        set player's chestplate  to air
+        set player's leggings    to air
+        set player's boots       to air
+        set player's offhand tool to air
+        loop 36 times:
+            set slot (loop-number - 1) of player's inventory to {sub.saved.inv.%player%.%loop-number - 1%}
+        delete {sub.saved.inv.%player%::*}
+        set player's helmet      to {sub.saved.armor.helmet::%player%}
+        set player's chestplate  to {sub.saved.armor.chestplate::%player%}
+        set player's leggings    to {sub.saved.armor.leggings::%player%}
+        set player's boots       to {sub.saved.armor.boots::%player%}
+        set player's offhand tool to {sub.saved.armor.offhand::%player%}
+        delete {sub.saved.armor.helmet::%player%}
+        delete {sub.saved.armor.chestplate::%player%}
+        delete {sub.saved.armor.leggings::%player%}
+        delete {sub.saved.armor.boots::%player%}
+        delete {sub.saved.armor.offhand::%player%}
+        teleport player to {sub.duel.pos::%player%}
+        delete {sub.duel.pos::%player%}
+        delete {sub.duel.loser::%player%}
+        send "{@prefix} &cYour sub duel was ended because you disconnected." to player
+
+    else if {sub.duel.active::%player%} is true:
+        clear player's inventory
+        set player's helmet      to air
+        set player's chestplate  to air
+        set player's leggings    to air
+        set player's boots       to air
+        set player's offhand tool to air
+        loop 36 times:
+            set slot (loop-number - 1) of player's inventory to {sub.saved.inv.%player%.%loop-number - 1%}
+        delete {sub.saved.inv.%player%::*}
+        set player's helmet      to {sub.saved.armor.helmet::%player%}
+        set player's chestplate  to {sub.saved.armor.chestplate::%player%}
+        set player's leggings    to {sub.saved.armor.leggings::%player%}
+        set player's boots       to {sub.saved.armor.boots::%player%}
+        set player's offhand tool to {sub.saved.armor.offhand::%player%}
+        delete {sub.saved.armor.helmet::%player%}
+        delete {sub.saved.armor.chestplate::%player%}
+        delete {sub.saved.armor.leggings::%player%}
+        delete {sub.saved.armor.boots::%player%}
+        delete {sub.saved.armor.offhand::%player%}
+        teleport player to {sub.duel.pos::%player%}
+        delete {sub.duel.pos::%player%}
+        subCleanDuelVars(player)
+        subCleanRoundVars(player)
+        delete {sub.duel.loser::%player%}
+        send "{@prefix} &cYour sub duel was ended because you disconnected." to player
+
+# ============================================================
+#  COMMAND: /subrank [player]
+# ============================================================
+command /subrank [<player>]:
+    trigger:
+        if arg 1 is set:
+            set {_target} to arg 1
+        else:
+            set {_target} to player
+        set {_uuid}         to "%uuid of {_target}%"
+        set {_totalMMR}     to subGetTotalMMR({_uuid})
+        set {_totalPoints}  to subGetTotalPoints({_uuid})
+        set {_overallPos}   to subGetOverallRank({_uuid})
+
+        send "" to player
+        send "&8&m               &b&l%name of {_target}%'s Sub Ranks &8&m              " to player
+        send "" to player
+        if {_totalMMR} is 0:
+            send "&7Overall Rank: &8Unranked &7(complete placements in any mode to rank)" to player
+            send "&7Ranking Points: &80" to player
+        else:
+            send "&7Overall Rank: &6#%{_overallPos}% &8| &7Total MMR: &f%{_totalMMR}%" to player
+            send "&7Ranking Points: &6%{_totalPoints}% pts" to player
+        send "" to player
+        send "&b&lGamemode MMR:" to player
+
+        loop "cartpvp", "speed", "bow", "creeper", "trident", "elytra", "diamondsmp", "diamondvanilla":
+            set {_mmr}    to subGetModeMMR({_target}, loop-value)
+            set {_fights} to subGetModeFights({_target}, loop-value)
+            set {_rank}   to subGetModeRank({_uuid}, loop-value)
+            set {_name}   to subGetQueueModeName(loop-value)
+            if {_rank} is "Unranked":
+                send "  &7%{_name}%: &8Unranked &7(%{_fights}%/10 placements)" to player
+            else:
+                send "  &7%{_name}%: &f%{_rank}% &8(%{_mmr}% MMR, %{_fights}% fights)" to player
+
+        send "" to player
+
+# ============================================================
+#  COMMAND: /subht1 [mode]
+# ============================================================
+command /subht1 [<text>]:
+    trigger:
+        if arg 1 is set:
+            set {_mode} to arg 1
+            if {sub.ht1holder.%{_mode}%} is not set:
+                send "{@prefix} &7No HT1 holder yet in &f%{_mode}%&7." to player
+                stop
+            send "{@prefix} &6&l[HT1 - %{_mode}%] &eCurrent champion: &6%{sub.ht1holder.%{_mode}%}%" to player
+        else:
+            send "{@prefix} &7Usage: /subht1 <mode>  (cartpvp, speed, bow, creeper, trident, elytra, diamondsmp, diamondvanilla)" to player
+
+# ============================================================
+#  ADMIN: /subsetmmr <player>
+# ============================================================
+command /subsetmmr <player>:
+    permission: op
+    trigger:
+        if arg-1 is not set:
+            send "&cUsage: /subsetmmr <player>" to player
+            stop
+        set {sub.setmmr.target::%player%} to arg-1
+        set {_gui} to chest inventory with 1 rows named "&8Sub: Set MMR"
+        set slot 0 of {_gui} to minecart with tnt named "&6CartPVP"
+        set slot 1 of {_gui} to diamond sword named "&fSpeed"
+        set slot 2 of {_gui} to bow named "&7Bow"
+        set slot 3 of {_gui} to creeper spawn egg named "&2Creeper"
+        set slot 4 of {_gui} to trident named "&3Trident"
+        set slot 5 of {_gui} to elytra named "&bElytra"
+        set slot 6 of {_gui} to diamond chestplate named "&9Diamond SMP"
+        set slot 7 of {_gui} to diamond helmet named "&dDiamond Vanilla"
+        set slot 8 of {_gui} to barrier named "&cExit"
+        open {_gui} to player
+
+on inventory click:
+    if name of event-inventory is "&8Sub: Set MMR":
+        cancel event
+        if event-item is air:
+            stop
+        set {_n} to name of event-item
+        if {_n} is "&6CartPVP":
+            set {sub.setmmr.mode::%player%} to "cartpvp"
+        else if {_n} is "&fSpeed":
+            set {sub.setmmr.mode::%player%} to "speed"
+        else if {_n} is "&7Bow":
+            set {sub.setmmr.mode::%player%} to "bow"
+        else if {_n} is "&2Creeper":
+            set {sub.setmmr.mode::%player%} to "creeper"
+        else if {_n} is "&3Trident":
+            set {sub.setmmr.mode::%player%} to "trident"
+        else if {_n} is "&bElytra":
+            set {sub.setmmr.mode::%player%} to "elytra"
+        else if {_n} is "&9Diamond SMP":
+            set {sub.setmmr.mode::%player%} to "diamondsmp"
+        else if {_n} is "&dDiamond Vanilla":
+            set {sub.setmmr.mode::%player%} to "diamondvanilla"
+        else:
+            close player's inventory
+            stop
+        close player's inventory
+        send "&8[&bSubSetMMR&8] &7Type the MMR amount in chat for &e%name of {sub.setmmr.target::%player%}%&7 in &f%{sub.setmmr.mode::%player%}%&7. Type &ccancel &7to abort." to player
+        set {sub.setmmr.awaiting::%player%} to true
+
+# ============================================================
+#  ADMIN: /submmrreset <player> [mode]
+# ============================================================
+command /submmrreset <player> [<text>]:
+    permission: op
+    trigger:
+        set {_uuid} to "%uuid of arg 1%"
+        if arg 2 is set:
+            set {sub.mmr.%arg-2%::%{_uuid}%} to 1000
+            set {sub.fights.%arg-2%::%{_uuid}%} to 0
+            delete {sub.mmr.lastfight.%arg-2%::%{_uuid}%}
+            if {sub.ht1holder.%arg-2%} is {_uuid}:
+                delete {sub.ht1holder.%arg-2%}
+                send "&eHT1 throne for %arg-2% has been vacated." to player
+            send "&aReset %name of arg 1%'s %arg-2% MMR to 1000 with 0 fights." to player
+        else:
+            loop "cartpvp", "speed", "bow", "creeper", "trident", "elytra", "diamondsmp", "diamondvanilla":
+                set {sub.mmr.%loop-value%::%{_uuid}%} to 1000
+                set {sub.fights.%loop-value%::%{_uuid}%} to 0
+                delete {sub.mmr.lastfight.%loop-value%::%{_uuid}%}
+                if {sub.ht1holder.%loop-value%} is {_uuid}:
+                    delete {sub.ht1holder.%loop-value%}
+            send "&aReset all sub MMR for %name of arg 1% to 1000 with 0 fights." to player
+
+# ============================================================
+#  ADMIN: /subdebuggmmr <player>
+# ============================================================
+command /subdebugmmr <player>:
+    permission: op
+    trigger:
+        set {_uuid} to "%uuid of arg-1%"
+        send "&eUUID: &f%{_uuid}%" to player
+        loop "cartpvp", "speed", "bow", "creeper", "trident", "elytra", "diamondsmp", "diamondvanilla":
+            set {_fights} to {sub.fights.%loop-value%::%{_uuid}%}
+            set {_mmr}    to {sub.mmr.%loop-value%::%{_uuid}%}
+            set {_placed} to subHasCompletedPlacements({_uuid}, loop-value)
+            send "&7%loop-value%: &ffights=%{_fights}% mmr=%{_mmr}% placed=%{_placed}%" to player
+
+# ============================================================
+#  ADMIN: /subforceplacement <player> [mode]
+# ============================================================
+command /subforceplacement <offline player> [<text>]:
+    permission: op
+    trigger:
+        set {_uuid} to "%uuid of arg-1%"
+        if arg-2 is set:
+            set {sub.fights.%arg-2%::%{_uuid}%} to 10
+            send "&a[SubDuels] %name of arg-1% is now placed in %arg-2%." to player
+        else:
+            loop "cartpvp", "speed", "bow", "creeper", "trident", "elytra", "diamondsmp", "diamondvanilla":
+                set {sub.fights.%loop-value%::%{_uuid}%} to 10
+            send "&a[SubDuels] %name of arg-1% is now placed in all modes." to player
+
+# ============================================================
+#  ADMIN: /subfreearena <type> [number]
+# ============================================================
+command /subfreearena <text> [<integer>]:
+    permission: op
+    trigger:
+        if arg-1 is "big":
+            if arg-2 is set:
+                delete {sub.arena.big.%arg-2%.inuse}
+                send "&aFreed sub big arena %arg-2%." to player
+            else:
+                loop integers from 1 to 3:
+                    delete {sub.arena.big.%loop-number%.inuse}
+                send "&aFreed all sub big arenas." to player
+        else:
+            if arg-2 is set:
+                delete {sub.arena.small.%arg-2%.inuse}
+                send "&aFreed sub small arena %arg-2%." to player
+            else:
+                loop integers from 1 to 7:
+                    delete {sub.arena.small.%loop-number%.inuse}
+                send "&aFreed all sub small arenas." to player
+
+# ============================================================
+#  ADMIN: /subresetallstats
+# ============================================================
+command /subresetallstats:
+    permission: op
+    trigger:
+        loop "cartpvp", "speed", "bow", "creeper", "trident", "elytra", "diamondsmp", "diamondvanilla":
+            delete {sub.mmr.%loop-value%::*}
+            delete {sub.fights.%loop-value%::*}
+            delete {sub.wins.%loop-value%::*}
+            delete {sub.losses.%loop-value%::*}
+            delete {sub.mmr.lastfight.%loop-value%::*}
+            delete {sub.ht1holder.%loop-value%}
+        send "&a&l[SubDuels] All sub duel stats have been fully reset!" to player
+        broadcast "&c&l[SubDuels] &7All sub ranked stats have been reset by &f%name of player%&7."
+
+# ============================================================
+#  QUEUE SYSTEM
+# ============================================================
+
+function subUpdateQueueSigns(mode: text):
+    set {_count} to 0
+    loop {sub.queue.players.%{_mode}%::*}:
+        add 1 to {_count}
+    set {_name} to subGetQueueModeName({_mode})
+    loop {sub.queuesign.locs.%{_mode}%::*}:
+        set {_loc} to loop-value
+        set {_type} to type of block at {_loc}
+        if {_type} is oak sign or spruce sign or birch sign or jungle sign or acacia sign or dark oak sign or crimson sign or warped sign or mangrove sign or bamboo sign or cherry sign:
+            set line 1 of block at {_loc} to "&b&l%{_name}%"
+            set line 2 of block at {_loc} to "&eSub Queue"
+            set line 3 of block at {_loc} to "&f%{_count}% &7/ &f2"
+            set line 4 of block at {_loc} to "&7[Click to join]"
+
+function subLeaveAllQueues(p: player):
+    set {_uuid} to "%uuid of {_p}%"
+    loop "cartpvp", "speed", "bow", "creeper", "trident", "elytra", "diamondsmp", "diamondvanilla":
+        if {sub.queue.players.%loop-value%::%{_uuid}%} is set:
+            delete {sub.queue.players.%loop-value%::%{_uuid}%}
+            call subUpdateQueueSigns(loop-value)
+    delete {sub.queue.mode::%{_uuid}%}
+
+function subJoinQueue(p: player, mode: text):
+    set {_uuid} to "%uuid of {_p}%"
+
+    if {sub.duel.active::%{_p}%} is true:
+        send "{@prefix} &cYou are already in a sub duel." to {_p}
+        stop
+    if {duel.active::%{_p}%} is true:
+        send "{@prefix} &cYou are already in a duel." to {_p}
+        stop
+
+    if {sub.queue.mode::%{_uuid}%} is set:
+        set {_currentMode} to {sub.queue.mode::%{_uuid}%}
+        if {_currentMode} is {_mode}:
+            send "{@prefix} &cYou are already queued for &e%subGetQueueModeName({_mode})%&c." to {_p}
+            stop
+        delete {sub.queue.players.%{_currentMode}%::%{_uuid}%}
+        call subUpdateQueueSigns({_currentMode})
+
+    set {sub.queue.players.%{_mode}%::%{_uuid}%} to {_p}
+    set {sub.queue.mode::%{_uuid}%} to {_mode}
+    call subUpdateQueueSigns({_mode})
+
+    send "{@prefix} &aJoined the &e%subGetQueueModeName({_mode})%&a sub queue! &7Waiting for an opponent..." to {_p}
+
+    set {_count} to 0
+    set {_other} to ""
+    loop {sub.queue.players.%{_mode}%::*}:
+        add 1 to {_count}
+        if loop-index-1 is not {_uuid}:
+            set {_other} to loop-index-1
+
+    if {_count} >= 2:
+        set {_p1} to {_p}
+        set {_p2} to {sub.queue.players.%{_mode}%::%{_other}%}
+
+        if {_p2} is not online:
+            delete {sub.queue.players.%{_mode}%::%{_other}%}
+            call subUpdateQueueSigns({_mode})
+            send "{@prefix} &cMatched player went offline — still waiting..." to {_p1}
+            stop
+
+        set {_uuid2} to "%uuid of {_p2}%"
+        delete {sub.queue.players.%{_mode}%::%{_uuid}%}
+        delete {sub.queue.players.%{_mode}%::%{_uuid2}%}
+        delete {sub.queue.mode::%{_uuid}%}
+        delete {sub.queue.mode::%{_uuid2}%}
+        call subUpdateQueueSigns({_mode})
+        call subStartQueueDuel({_p1}, {_p2}, {_mode})
+
+function subStartQueueDuel(p1: player, p2: player, mode: text):
+    if {_mode} is "elytra" or "cartpvp" or "trident" or "diamondsmp" or "diamondvanilla" or "creeper":
+        set {_arenaIdx} to subGetFreeBigArena()
+        if {_arenaIdx} is 0:
+            send "{@prefix} &cNo arenas available — re-queuing you both." to {_p1}
+            send "{@prefix} &cNo arenas available — re-queuing you both." to {_p2}
+            call subJoinQueue({_p1}, {_mode})
+            call subJoinQueue({_p2}, {_mode})
+            stop
+        set {_arenaType} to "big"
+        set {sub.arena.big.%{_arenaIdx}%.inuse} to true
+        set {_spawnP1} to {sub.arena.big.%{_arenaIdx}%.p1}
+        set {_spawnP2} to {sub.arena.big.%{_arenaIdx}%.p2}
+    else:
+        set {_arenaIdx} to subGetFreeSmallArena()
+        if {_arenaIdx} is 0:
+            send "{@prefix} &cNo arenas available — re-queuing you both." to {_p1}
+            send "{@prefix} &cNo arenas available — re-queuing you both." to {_p2}
+            call subJoinQueue({_p1}, {_mode})
+            call subJoinQueue({_p2}, {_mode})
+            stop
+        set {_arenaType} to "small"
+        set {sub.arena.small.%{_arenaIdx}%.inuse} to true
+        set {_spawnP1} to {sub.arena.small.%{_arenaIdx}%.p1}
+        set {_spawnP2} to {sub.arena.small.%{_arenaIdx}%.p2}
+
+    set {_ft} to 2
+
+    send "" to {_p1}
+    send "&a&lMatch found! &eYou will face &f%name of {_p2}%&e in &6%subGetQueueModeName({_mode})%&e (FT%{_ft}%)." to {_p1}
+    send "" to {_p1}
+    send "" to {_p2}
+    send "&a&lMatch found! &eYou will face &f%name of {_p1}%&e in &6%subGetQueueModeName({_mode})%&e (FT%{_ft}%)." to {_p2}
+    send "" to {_p2}
+
+    set {sub.duel.opponent::%{_p1}%}   to {_p2}
+    set {sub.duel.opponent::%{_p2}%}   to {_p1}
+    set {sub.duel.type::%{_p1}%}       to {_mode}
+    set {sub.duel.type::%{_p2}%}       to {_mode}
+    set {sub.duel.arena::%{_p1}%}      to {_arenaIdx}
+    set {sub.duel.arena::%{_p2}%}      to {_arenaIdx}
+    set {sub.duel.arenatype::%{_p1}%}  to {_arenaType}
+    set {sub.duel.arenatype::%{_p2}%}  to {_arenaType}
+    set {sub.duel.ft::%{_p1}%}         to {_ft}
+    set {sub.duel.ft::%{_p2}%}         to {_ft}
+    set {sub.duel.roundwins::%{_p1}%}  to 0
+    set {sub.duel.roundwins::%{_p2}%}  to 0
+
+    subSaveDuelState({_p1}, {_p2})
+    subClearForDuel({_p1})
+    subClearForDuel({_p2})
+
+    teleport {_p1} to {_spawnP1}
+    teleport {_p2} to {_spawnP2}
+
+    if {_arenaType} is "big":
+        resetBigArena({_arenaIdx})
+
+    wait 5 ticks
+
+    subGiveKitToPlayer({_p1}, {_mode})
+    subGiveKitToPlayer({_p2}, {_mode})
+
+    set {sub.duel.active::%{_p1}%} to true
+    set {sub.duel.active::%{_p2}%} to true
+
+    heal {_p1}
+    heal {_p2}
+    execute console command "effect clear %{_p1}%"
+    execute console command "effect clear %{_p2}%"
+
+    send "{@prefix} &aThe sub duel has started! &7(FT%{_ft}%) Use &e/subendduel &ato forfeit." to {_p1}
+    send "{@prefix} &aThe sub duel has started! &7(FT%{_ft}%) Use &e/subendduel &ato forfeit." to {_p2}
+
+# ============================================================
+#  COMMAND: /subqueue
+# ============================================================
+command /subqueue:
+    trigger:
+        if {sub.duel.active::%player%} is true:
+            send "{@prefix} &cYou are already in a sub duel." to player
+            stop
+        if {duel.active::%player%} is true:
+            send "{@prefix} &cYou are already in a duel." to player
+            stop
+
+        set {_gui} to chest inventory with 2 rows named "&bSub: Join Queue"
+        set slot 0  of {_gui} to minecart with tnt named "&6CartPVP"
+        set slot 1  of {_gui} to diamond sword named "&fSpeed"
+        set slot 2  of {_gui} to bow named "&7Bow"
+        set slot 3  of {_gui} to creeper spawn egg named "&2Creeper"
+        set slot 4  of {_gui} to trident named "&3Trident"
+        set slot 5  of {_gui} to elytra named "&bElytra"
+        set slot 6  of {_gui} to diamond chestplate named "&9Diamond SMP"
+        set slot 7  of {_gui} to diamond helmet named "&dDiamond Vanilla"
+        set slot 8  of {_gui} to barrier named "&cLeave Queue"
+        open {_gui} to player
+
+on inventory click:
+    if name of event-inventory is "&bSub: Join Queue":
+        cancel event
+        if event-item is air:
+            stop
+        set {_n} to name of event-item
+        set {_mode} to ""
+        if {_n} is "&6CartPVP":
+            set {_mode} to "cartpvp"
+        else if {_n} is "&fSpeed":
+            set {_mode} to "speed"
+        else if {_n} is "&7Bow":
+            set {_mode} to "bow"
+        else if {_n} is "&2Creeper":
+            set {_mode} to "creeper"
+        else if {_n} is "&3Trident":
+            set {_mode} to "trident"
+        else if {_n} is "&bElytra":
+            set {_mode} to "elytra"
+        else if {_n} is "&9Diamond SMP":
+            set {_mode} to "diamondsmp"
+        else if {_n} is "&dDiamond Vanilla":
+            set {_mode} to "diamondvanilla"
+        else if {_n} is "&cLeave Queue":
+            close player's inventory
+            call subLeaveAllQueues(player)
+            send "{@prefix} &cYou have left the sub queue." to player
+            stop
+        else:
+            stop
+        if {_mode} is "":
+            stop
+        close player's inventory
+        call subJoinQueue(player, {_mode})
+
+# ============================================================
+#  COMMAND: /subleavequeue
+# ============================================================
+command /subleavequeue:
+    trigger:
+        set {_uuid} to "%uuid of player%"
+        if {sub.queue.mode::%{_uuid}%} is not set:
+            send "{@prefix} &cYou are not in any sub queue." to player
+            stop
+        call subLeaveAllQueues(player)
+        send "{@prefix} &cYou have left the sub queue." to player
+
+# ============================================================
+#  COMMAND: /subsetsign <gamemode>
+# ============================================================
+command /subsetsign <text>:
+    permission: op
+    trigger:
+        set {_mode} to arg-1
+        if subIsValidQueueMode({_mode}) is false:
+            send "{@prefix} &cInvalid mode. Use: cartpvp, speed, bow, creeper, trident, elytra, diamondsmp, diamondvanilla" to player
+            stop
+        set {_target} to target block of player
+        set {_x} to round(x-coordinate of location of {_target})
+        set {_y} to round(y-coordinate of location of {_target})
+        set {_z} to round(z-coordinate of location of {_target})
+        set {_w} to world of player
+        set {_px} to round(x-coordinate of location of player)
+        set {_pz} to round(z-coordinate of location of player)
+        set {_dx} to {_x} - {_px}
+        set {_dz} to {_z} - {_pz}
+        set {_signx} to {_x}
+        set {_signz} to {_z}
+        if {_dx} > 0:
+            set {_signx} to {_x} - 1
+        else if {_dx} < 0:
+            set {_signx} to {_x} + 1
+        else if {_dz} > 0:
+            set {_signz} to {_z} - 1
+        else:
+            set {_signz} to {_z} + 1
+        set {_signloc} to location({_signx}, {_y}, {_signz}, {_w})
+        set block at {_signloc} to oak sign
+        set {_name} to subGetQueueModeName({_mode})
+        set line 1 of block at {_signloc} to "&b&l%{_name}%"
+        set line 2 of block at {_signloc} to "&eSub Queue"
+        set line 3 of block at {_signloc} to "&f0 &7/ &f2"
+        set line 4 of block at {_signloc} to "&7[Click to join]"
+        set {_key} to "%{_signx}%_%{_y}%_%{_signz}%"
+        set {sub.queuesign.locs.%{_mode}%::%{_key}%} to {_signloc}
+        send "{@prefix} &aSub queue sign set for &e%{_name}%&a." to player
+
+# ── SIGN CLICK ─────────────────────────────────────────────────
+on right click on oak sign:
+    2nd line of clicked block is "&eSub Queue"
+    cancel event
+    set {_line1} to line 1 of clicked block
+    if {_line1} is "&b&lCartPVP":
+        call subJoinQueue(player, "cartpvp")
+    else if {_line1} is "&b&lSpeed":
+        call subJoinQueue(player, "speed")
+    else if {_line1} is "&b&lBow":
+        call subJoinQueue(player, "bow")
+    else if {_line1} is "&b&lCreeper":
+        call subJoinQueue(player, "creeper")
+    else if {_line1} is "&b&lTrident":
+        call subJoinQueue(player, "trident")
+    else if {_line1} is "&b&lElytra":
+        call subJoinQueue(player, "elytra")
+    else if {_line1} is "&b&lDiamond SMP":
+        call subJoinQueue(player, "diamondsmp")
+    else if {_line1} is "&b&lDiamond Vanilla":
+        call subJoinQueue(player, "diamondvanilla")
+    else:
+        send "{@prefix} &cUnknown sub queue sign." to player
+
+# ============================================================
+#  KIT EDITOR — /subeditkit
+#  Players can rearrange the 36 main-inventory slots per mode.
+#  Armour and offhand are always the default — not editable.
+# ============================================================
+
+# command /subeditkit:
+    trigger:
+        if {sub.duel.active::%player%} is true:
+            send "{@prefix} &cYou cannot edit kits while in a sub duel." to player
+            stop
+
+        set {_gui}  to chest inventory with 4 rows named "&8Sub: Kit Editor"
+        set {_pane} to gray stained glass pane named " "
+        loop integers from 0 to 35:
+            set slot loop-number of {_gui} to {_pane}
+
+        set slot 11 of {_gui} to minecart with tnt named "&6CartPVP"
+        set slot 12 of {_gui} to diamond sword named "&fSpeed"
+        set slot 13 of {_gui} to bow named "&7Bow"
+        set slot 14 of {_gui} to creeper spawn egg named "&2Creeper"
+        set slot 15 of {_gui} to trident named "&3Trident"
+        set slot 20 of {_gui} to elytra named "&bElytra"
+        set slot 21 of {_gui} to diamond chestplate named "&9Diamond SMP"
+        set slot 22 of {_gui} to diamond helmet named "&dDiamond Vanilla"
+
+        open {_gui} to player
+        set {sub.editkit.inpicker::%player%} to true
+
+on inventory close:
+    if name of event-inventory is "&8Sub: Kit Editor":
+        delete {sub.editkit.inpicker::%player%}
+
+on inventory click:
+    if name of event-inventory is "&8Sub: Kit Editor":
+        cancel event
+        if event-item is air:
+            stop
+        if event-item is gray stained glass pane:
+            stop
+        set {_n} to name of event-item
+        set {_mode} to ""
+        if {_n} is "&6CartPVP":
+            set {_mode} to "cartpvp"
+        else if {_n} is "&fSpeed":
+            set {_mode} to "speed"
+        else if {_n} is "&7Bow":
+            set {_mode} to "bow"
+        else if {_n} is "&2Creeper":
+            set {_mode} to "creeper"
+        else if {_n} is "&3Trident":
+            set {_mode} to "trident"
+        else if {_n} is "&bElytra":
+            set {_mode} to "elytra"
+        else if {_n} is "&9Diamond SMP":
+            set {_mode} to "diamondsmp"
+        else if {_n} is "&dDiamond Vanilla":
+            set {_mode} to "diamondvanilla"
+        else:
+            stop
+        if {_mode} is "":
+            stop
+        delete {sub.editkit.inpicker::%player%}
+        set {sub.editkit.editing::%player%} to {_mode}
+        close player's inventory
+        wait 1 tick
+        call subOpenKitEditor(player, {_mode})
+
+# ============================================================
+#  KIT EDITOR GUI — 6 rows
+#  Row 1 (slots 0-8):  controls
+#  Rows 2-5 (9-44):    36 kit slots (inv slot N → gui slot N+9)
+#  Row 6 (45-53):      glass panes
+# ============================================================
+
+function subOpenKitEditor(p: player, mode: text):
+    set {_uuid}     to "%uuid of {_p}%"
+    set {_modeName} to subGetQueueModeName({_mode})
+    set {_gui}      to chest inventory with 6 rows named "&8Sub Edit: %{_modeName}%"
+    set {_pane}     to gray stained glass pane named " "
+
+    set slot 0 of {_gui} to lime dye named "&a&lSave Kit"  with lore "&7Saves your current layout."
+    set slot 4 of {_gui} to red dye  named "&c&lReset Kit" with lore "&7Resets to the default kit."
+    set slot 8 of {_gui} to barrier   named "&e&lClose"    with lore "&7Closes without saving."
+
+    loop integers from 45 to 53:
+        set slot loop-number of {_gui} to {_pane}
+
+    set {_hasCustom} to subHasCustomKit({_uuid}, {_mode})
+    if {_hasCustom} is false:
+        set {_defaults::*} to subGetDefaultKitItems({_mode})
+
+    loop integers from 0 to 35:
+        set {_guiSlot} to loop-number + 9
+        if {_hasCustom} is true:
+            set {_item} to subGetCustomKitItem({_uuid}, {_mode}, loop-number)
+        else:
+            set {_item} to {_defaults::%loop-number + 1%}
+            if {_item} is not set:
+                set {_item} to air
+        if {_item} is air:
+            set slot {_guiSlot} of {_gui} to {_pane}
+        else:
+            set slot {_guiSlot} of {_gui} to {_item}
+
+    open {_gui} to {_p}
+    set {sub.editkit.editing::%{_p}%} to {_mode}
+
+# ============================================================
+#  KIT EDITOR CLICK — one handler catches all 8 mode GUIs
+# ============================================================
+on inventory click:
+    if name of event-inventory starts with "&8Sub Edit:":
+        set {_p}    to player
+        set {_uuid} to "%uuid of {_p}%"
+        set {_mode} to {sub.editkit.editing::%{_p}%}
+        if {_mode} is not set:
+            cancel event
+            stop
+
+        # Block player-inventory section and hotbar-swap
+        if event-slot >= 54:
+            cancel event
+            stop
+        if clicked inventory is player's inventory:
+            cancel event
+            stop
+        if click action is number key:
+            cancel event
+            stop
+        if click type is left mouse with shift:
+            cancel event
+            stop
+        if click type is right mouse with shift:
+            cancel event
+            stop
+
+        # Row 6 guard (slots 45-53)
+        if event-slot >= 45:
+            cancel event
+            stop
+
+        set {_n} to name of event-item
+
+        if {_n} is "&a&lSave Kit":
+            cancel event
+            set {_paneCheck} to gray stained glass pane named " "
+            loop integers from 0 to 35:
+                set {_guiSlot} to loop-number + 9
+                set {_item}    to slot {_guiSlot} of event-inventory
+                if {_item} is {_paneCheck}:
+                    set {sub.editkit.%{_mode}%.%{_uuid}%.%loop-number%} to air
+                else:
+                    set {sub.editkit.%{_mode}%.%{_uuid}%.%loop-number%} to {_item}
+            set {sub.editkit.%{_mode}%.%{_uuid}%.hasCustom} to true
+            close {_p}'s inventory
+            delete {sub.editkit.editing::%{_p}%}
+            send "{@prefix} &a&lKit saved! &7Your custom &e%subGetQueueModeName({_mode})%&7 kit is ready." to {_p}
+
+        else if {_n} is "&c&lReset Kit":
+            cancel event
+            loop integers from 0 to 35:
+                delete {sub.editkit.%{_mode}%.%{_uuid}%.%loop-number%}
+            delete {sub.editkit.%{_mode}%.%{_uuid}%.hasCustom}
+            close {_p}'s inventory
+            delete {sub.editkit.editing::%{_p}%}
+            wait 1 tick
+            send "{@prefix} &c&lKit reset! &7Your &e%subGetQueueModeName({_mode})%&7 kit has been restored to default." to {_p}
+            call subOpenKitEditor({_p}, {_mode})
+
+        else if {_n} is "&e&lClose":
+            cancel event
+            close {_p}'s inventory
+            delete {sub.editkit.editing::%{_p}%}
+            send "{@prefix} &7Kit editor closed without saving." to {_p}
+
+# ── Clean up on close ──────────────────────────────────────────
+on inventory close:
+    if name of event-inventory starts with "&8Sub Edit:":
+        delete {sub.editkit.editing::%player%}
+        delete {sub.editkit.inpicker::%player%}
+
+# ── Prevent drops while editor open ───────────────────────────
+on drop:
+    if {sub.editkit.editing::%player%} is set:
+        cancel event
+        wait 1 tick
+        remove event-item from player
+
+# ============================================================
+#  ADMIN: /subresetkit <player> [mode]
+# ============================================================
+command /subresetkit <offline player> [<text>]:
+    permission: op
+    trigger:
+        set {_uuid} to "%uuid of arg-1%"
+        if arg-2 is set:
+            loop integers from 0 to 35:
+                delete {sub.editkit.%arg-2%.%{_uuid}%.%loop-number%}
+            delete {sub.editkit.%arg-2%.%{_uuid}%.hasCustom}
+            send "&a[SubDuels] Reset %name of arg-1%'s custom %arg-2% kit." to player
+        else:
+            loop "cartpvp", "speed", "bow", "creeper", "trident", "elytra", "diamondsmp", "diamondvanilla":
+                loop integers from 0 to 35:
+                    delete {sub.editkit.%loop-value-1%.%{_uuid}%.%loop-value-2%}
+                delete {sub.editkit.%loop-value-1%.%{_uuid}%.hasCustom}
+            send "&a[SubDuels] Reset all custom kits for %name of arg-1%." to player

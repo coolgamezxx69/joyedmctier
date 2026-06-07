@@ -8,6 +8,23 @@ const migrations = [
   `ALTER TABLE players ADD COLUMN ip VARCHAR(45) DEFAULT NULL`,
   `ALTER TABLE players ADD COLUMN region_checked TINYINT(1) NOT NULL DEFAULT 0`,
   `UPDATE players SET region = 'US' WHERE region NOT IN ('US', 'EU')`,
+  `CREATE TABLE IF NOT EXISTS sub_stats (
+      uuid VARCHAR(36) NOT NULL,
+      mode VARCHAR(32) NOT NULL,
+      mmr INT NOT NULL DEFAULT 1000,
+      wins INT NOT NULL DEFAULT 0,
+      losses INT NOT NULL DEFAULT 0,
+      fights INT NOT NULL DEFAULT 0,
+      last_fight DATETIME,
+      PRIMARY KEY (uuid, mode),
+      INDEX idx_sub_mode_mmr (mode, mmr DESC)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS sub_ht1_holders (
+      mode VARCHAR(32) NOT NULL,
+      uuid VARCHAR(36) NOT NULL,
+      PRIMARY KEY (mode),
+      INDEX idx_sub_ht1_uuid (uuid)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 ];
 
 export async function runMigrations(): Promise<void> {
