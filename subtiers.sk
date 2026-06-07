@@ -17,17 +17,23 @@ function subSyncMatchToAPI(winnerUUID: text, loserUUID: text, mode: text):
     set {_lFight} to {sub.fights.%{_mode}%::%{_loserUUID}%}
 
     # Sync winner
-    set {_wBody} to "{\"uuid\":\"%{_winnerUUID}%\",\"mode\":\"%{_mode}%\",\"mmr\":%{_wMMR}%,\"wins\":%{_wWins}%,\"losses\":%{sub.losses.%{_mode}%::%{_winnerUUID}%}%,\"fights\":%{_wFight}%}"
-    make a POST request to "{@API_BASE}/sub-sync/stats" with headers "Content-Type: application/json" and body {_wBody}
+    set {_wLoss} to {sub.losses.%{_mode}%::%{_winnerUUID}%}
+    if {_wLoss} is not set:
+        set {_wLoss} to 0
+    set {_wBody} to '{"uuid":"' + {_winnerUUID} + '","mode":"' + {_mode} + '","mmr":' + {_wMMR} + ',"wins":' + {_wWins} + ',"losses":' + {_wLoss} + ',"fights":' + {_wFight} + '}'
+    make a POST request to "{@API_BASE}/sub-sync/stats" with body {_wBody} and header "Content-Type: application/json"
 
     # Sync loser
-    set {_lBody} to "{\"uuid\":\"%{_loserUUID}%\",\"mode\":\"%{_mode}%\",\"mmr\":%{_lMMR}%,\"wins\":%{sub.wins.%{_mode}%::%{_loserUUID}%}%,\"losses\":%{_lLoss}%,\"fights\":%{_lFight}%}"
-    make a POST request to "{@API_BASE}/sub-sync/stats" with headers "Content-Type: application/json" and body {_lBody}
+    set {_lWins} to {sub.wins.%{_mode}%::%{_loserUUID}%}
+    if {_lWins} is not set:
+        set {_lWins} to 0
+    set {_lBody} to '{"uuid":"' + {_loserUUID} + '","mode":"' + {_mode} + '","mmr":' + {_lMMR} + ',"wins":' + {_lWins} + ',"losses":' + {_lLoss} + ',"fights":' + {_lFight} + '}'
+    make a POST request to "{@API_BASE}/sub-sync/stats" with body {_lBody} and header "Content-Type: application/json"
 
 # Call this when HT1 changes for a sub mode
 function subSyncHT1ToAPI(newHolderUUID: text, mode: text):
-    set {_body} to "{\"uuid\":\"%{_newHolderUUID}%\",\"mode\":\"%{_mode}%\"}"
-    make a POST request to "{@API_BASE}/sub-sync/ht1" with headers "Content-Type: application/json" and body {_body}
+    set {_body} to '{"uuid":"' + {_newHolderUUID} + '","mode":"' + {_mode} + '}'
+    make a POST request to "{@API_BASE}/sub-sync/ht1" with body {_body} and header "Content-Type: application/json"
 
 
 # ============================================================
@@ -2507,7 +2513,7 @@ on right click on oak sign:
 #  Armour and offhand are always the default — not editable.
 # ============================================================
 
-# command /subeditkit:
+command /subeditkit:
     trigger:
         if {sub.duel.active::%player%} is true:
             send "{@prefix} &cYou cannot edit kits while in a sub duel." to player
